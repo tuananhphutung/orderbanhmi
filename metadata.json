@@ -1,0 +1,7 @@
+{
+  "name": "Order Bánh Mì Hội An",
+  "description": "A POS login interface for a Bánh Mì shop",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
