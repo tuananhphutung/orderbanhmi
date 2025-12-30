@@ -105,7 +105,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
       {/* Content */}
       <div className="flex-1 overflow-auto bg-gray-100 pt-16 md:pt-0">
-        {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} />}
+        {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} shifts={shifts} />}
         {activeTab === 'staff' && <StaffManager users={users} setUsers={setUsers} />}
         {activeTab === 'shifts' && <ShiftManager users={users} shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={onNotify} />}
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
