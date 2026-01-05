@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { MenuItem } from '../../types';
-import { Plus, Minus, Trash2, Utensils, Save, Image as ImageIcon, Loader2, XCircle, Video } from 'lucide-react';
+import { Plus, Minus, Trash2, Utensils, Save, Image as ImageIcon, Loader2, XCircle, Video, Infinity } from 'lucide-react';
 import { uploadFileToFirebase, db } from '../../firebase';
 import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
@@ -10,7 +10,7 @@ interface InventoryManagerProps {
 }
 
 const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
-  const [newItem, setNewItem] = useState<{name: string, price: string, stock: string, category: 'food' | 'drink', image: string}>({
+  const [newItem, setNewItem] = useState<{name: string, price: string, stock: string, category: 'food' | 'topping', image: string}>({
     name: '', price: '', stock: '', category: 'food', image: ''
   });
   
@@ -18,12 +18,16 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddItem = async () => {
-    if (!newItem.name || !newItem.price || !newItem.stock) return alert("Vui lòng nhập tên, giá và số lượng");
+    // If topping, allow empty stock input (we treat it as infinite)
+    if (!newItem.name || !newItem.price || (newItem.category !== 'topping' && !newItem.stock)) {
+        return alert("Vui lòng nhập tên, giá và số lượng");
+    }
     
     const itemData = {
         name: newItem.name,
         price: Number(newItem.price),
-        stock: Number(newItem.stock),
+        // If topping, set a high dummy number for sorting compatibility, but logic will ignore it
+        stock: newItem.category === 'topping' ? 999999 : Number(newItem.stock),
         category: newItem.category,
         image: newItem.image
     };
@@ -172,10 +176,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                      <select 
                         className="w-full p-2.5 border border-gray-200 rounded-lg mt-1 bg-white outline-none"
                         value={newItem.category}
-                        onChange={e => setNewItem({...newItem, category: e.target.value as 'food' | 'drink'})}
+                        onChange={e => setNewItem({...newItem, category: e.target.value as any})}
                      >
                          <option value="food">Đồ ăn</option>
-                         <option value="drink">Đồ uống</option>
+                         {/* Removed Drink Option */}
+                         <option value="topping">Topping (Vô hạn)</option>
                      </select>
                 </div>
                 <div>
@@ -192,10 +197,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                      <label className="text-xs font-bold text-gray-500 uppercase">Kho đầu</label>
                     <input 
                         type="number" 
-                        className="w-full p-2.5 border border-gray-200 rounded-lg mt-1 focus:ring-2 focus:ring-orange-500 outline-none" 
-                        value={newItem.stock} 
+                        className={`w-full p-2.5 border border-gray-200 rounded-lg mt-1 outline-none ${newItem.category === 'topping' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'focus:ring-2 focus:ring-orange-500'}`}
+                        value={newItem.category === 'topping' ? '' : newItem.stock} 
                         onChange={e => setNewItem({...newItem, stock: e.target.value})} 
-                        placeholder="50"
+                        disabled={newItem.category === 'topping'}
+                        placeholder={newItem.category === 'topping' ? 'Vô hạn' : '50'}
                     />
                 </div>
                 <div className="flex items-end">
@@ -240,16 +246,25 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                 </div>
 
                 <div className="flex-1">
-                    <h4 className="font-bold text-gray-800 line-clamp-1" title={item.name}>{item.name}</h4>
+                    <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-gray-800 line-clamp-1 flex-1" title={item.name}>{item.name}</h4>
+                        {item.category === 'topping' && <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">TOPPING</span>}
+                    </div>
                     <p className="text-sm font-semibold text-orange-600">{item.price.toLocaleString('vi-VN')} đ</p>
                     
                     <div className="mt-3 flex items-center justify-between">
                         <span className="text-xs font-medium text-gray-500">Kho:</span>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => updateStock(item.id, item.stock - 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Minus size={12}/></button>
-                            <span className={`text-sm font-bold w-6 text-center ${item.stock < 5 ? 'text-red-500' : 'text-gray-800'}`}>{item.stock}</span>
-                            <button onClick={() => updateStock(item.id, item.stock + 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Plus size={12}/></button>
-                        </div>
+                        {item.category === 'topping' ? (
+                            <div className="flex items-center gap-2 text-purple-600 font-bold bg-purple-50 px-3 py-1 rounded-lg text-sm">
+                                <Infinity size={16} /> Vô hạn
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => updateStock(item.id, item.stock - 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Minus size={12}/></button>
+                                <span className={`text-sm font-bold w-6 text-center ${item.stock < 5 ? 'text-red-500' : 'text-gray-800'}`}>{item.stock}</span>
+                                <button onClick={() => updateStock(item.id, item.stock + 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Plus size={12}/></button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

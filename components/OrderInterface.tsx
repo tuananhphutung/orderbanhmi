@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MenuItem, CartItem, OrderSource } from '../types';
-import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ChevronUp, Trash2, Tag, User, Phone, Video, Search } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ChevronUp, Trash2, Tag, User, Phone, Video, Search, Infinity } from 'lucide-react';
 
 interface OrderInterfaceProps {
   cart: CartItem[];
@@ -19,17 +19,19 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
   
   // Filter State
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'food' | 'drink'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'food' | 'topping'>('all');
 
   const addToCart = (item: MenuItem) => {
-    if (item.stock <= 0) {
+    const isTopping = item.category === 'topping';
+
+    if (!isTopping && item.stock <= 0) {
       alert('Món này đã hết hàng!');
       return;
     }
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
-        if (existing.quantity >= item.stock) {
+        if (!isTopping && existing.quantity >= item.stock) {
            alert(`Chỉ còn ${item.stock} phần!`);
            return prev;
         }
@@ -44,9 +46,10 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
       if (item.id === id) {
         const menuItem = menuItems.find(m => m.id === id);
         const maxStock = menuItem ? menuItem.stock : 999;
+        const isTopping = menuItem?.category === 'topping';
         const newQty = item.quantity + delta;
         
-        if (newQty > maxStock) return item;
+        if (!isTopping && newQty > maxStock) return item;
         return { ...item, quantity: Math.max(0, newQty) };
       }
       return item;
@@ -76,6 +79,7 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
   // Filter Logic
   const filteredItems = useMemo(() => {
       return menuItems.filter(item => {
+          // If category is somehow 'drink' in DB, it will show in 'all' but not have a specific tab
           const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
           const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
           return matchesCategory && matchesSearch;
@@ -113,10 +117,10 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
                      Đồ ăn
                  </button>
                  <button 
-                    onClick={() => setSelectedCategory('drink')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${selectedCategory === 'drink' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    onClick={() => setSelectedCategory('topping')}
+                    className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${selectedCategory === 'topping' ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                  >
-                     Đồ uống
+                     Topping
                  </button>
              </div>
         </div>
@@ -124,62 +128,71 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
         {/* Menu Grid */}
         <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filteredItems.map(item => (
-              <div 
-                key={item.id} 
-                onClick={() => addToCart(item)}
-                className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group transition-all duration-200 hover:shadow-md active:scale-95 ${item.stock === 0 ? 'opacity-60 grayscale' : ''}`}
-              >
-                {/* Image/Video Area */}
-                <div className="h-32 md:h-40 w-full bg-gray-50 relative overflow-hidden">
-                    {item.image ? (
-                        isVideo(item.image) ? (
-                            <>
-                                <video 
-                                    src={item.image} 
-                                    className="w-full h-full object-cover" 
-                                    autoPlay 
-                                    muted 
-                                    loop 
-                                    playsInline 
-                                />
-                                <div className="absolute top-2 right-2 bg-black/30 backdrop-blur rounded-full p-1">
-                                    <Video size={12} className="text-white" />
-                                </div>
-                            </>
+            {filteredItems.map(item => {
+              const isTopping = item.category === 'topping';
+              const isOutOfStock = !isTopping && item.stock === 0;
+
+              return (
+                <div 
+                    key={item.id} 
+                    onClick={() => addToCart(item)}
+                    className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer group transition-all duration-200 hover:shadow-md active:scale-95 ${isOutOfStock ? 'opacity-60 grayscale' : ''}`}
+                >
+                    {/* Image/Video Area */}
+                    <div className="h-32 md:h-40 w-full bg-gray-50 relative overflow-hidden">
+                        {item.image ? (
+                            isVideo(item.image) ? (
+                                <>
+                                    <video 
+                                        src={item.image} 
+                                        className="w-full h-full object-cover" 
+                                        autoPlay 
+                                        muted 
+                                        loop 
+                                        playsInline 
+                                    />
+                                    <div className="absolute top-2 right-2 bg-black/30 backdrop-blur rounded-full p-1">
+                                        <Video size={12} className="text-white" />
+                                    </div>
+                                </>
+                            ) : (
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                            )
                         ) : (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                        )
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300">
-                            <UtensilsCrossed size={32} />
-                        </div>
-                    )}
-                    
-                    {/* Stock Badge */}
-                    <div className="absolute top-2 left-2">
-                        {item.stock === 0 ? (
-                            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">HẾT HÀNG</span>
-                        ) : (
-                            <span className="bg-white/90 backdrop-blur text-gray-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-gray-100">
-                                Kho: {item.stock}
-                            </span>
+                            <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <UtensilsCrossed size={32} />
+                            </div>
                         )}
+                        
+                        {/* Stock Badge */}
+                        <div className="absolute top-2 left-2">
+                            {isTopping ? (
+                                <span className="bg-purple-500/90 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-purple-400">
+                                    TOPPING
+                                </span>
+                            ) : item.stock === 0 ? (
+                                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">HẾT HÀNG</span>
+                            ) : (
+                                <span className="bg-white/90 backdrop-blur text-gray-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-gray-100">
+                                    Kho: {item.stock}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Info Area */}
+                    <div className="p-3">
+                    <h3 className="font-bold text-gray-800 text-sm md:text-base line-clamp-1 mb-1">{item.name}</h3>
+                    <div className="flex justify-between items-end">
+                        <span className="font-bold text-orange-600">{item.price.toLocaleString('vi-VN')}</span>
+                        <button className="bg-orange-50 text-orange-600 p-1.5 rounded-lg hover:bg-orange-100 transition-colors">
+                            <Plus size={16} />
+                        </button>
+                    </div>
                     </div>
                 </div>
-
-                {/* Info Area */}
-                <div className="p-3">
-                  <h3 className="font-bold text-gray-800 text-sm md:text-base line-clamp-1 mb-1">{item.name}</h3>
-                  <div className="flex justify-between items-end">
-                    <span className="font-bold text-orange-600">{item.price.toLocaleString('vi-VN')}</span>
-                    <button className="bg-orange-50 text-orange-600 p-1.5 rounded-lg hover:bg-orange-100 transition-colors">
-                        <Plus size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -198,7 +211,7 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
       </div>
 
       {/* Mobile Cart Button & Drawer */}
-      <div className="md:hidden fixed bottom-16 right-4 left-4 z-30">
+      <div className="md:hidden fixed bottom-24 right-4 left-4 z-30">
         <button 
             onClick={() => setIsMobileCartOpen(true)}
             className="w-full bg-gray-900 text-white p-4 rounded-xl shadow-lg flex items-center justify-between animate-in slide-in-from-bottom-4"
@@ -288,7 +301,7 @@ const CartContent = ({
         <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
              {/* Source Selector */}
              <div className="flex rounded-lg bg-white p-1 border border-gray-200 shadow-sm">
-                {(['app', 'grab', 'shopee', 'gojek'] as OrderSource[]).map(src => (
+                {(['app', 'grab', 'shopee', 'be'] as OrderSource[]).map(src => (
                     <button
                         key={src}
                         onClick={() => setOrderSource(src)}

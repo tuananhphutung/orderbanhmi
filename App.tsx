@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LoginForm from './components/LoginForm';
 import MainLayout from './components/MainLayout';
 import PaymentModal from './components/PaymentModal';
 import InstallPrompt from './components/InstallPrompt';
 import AdminLayout from './components/admin/AdminLayout';
+import Toast from './components/Toast';
 import { LoginFormData, User, Order, CartItem, CheckInRecord, MenuItem, OrderSource, Shift, Notification } from './types';
 import { Loader2, Wifi, WifiOff, AlertTriangle, X } from 'lucide-react';
 import { db, uploadFileToFirebase } from './firebase';
@@ -31,6 +32,22 @@ const App: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'permission-denied'>('connecting');
   const [showConnectionStatus, setShowConnectionStatus] = useState(true);
+
+  // Toast & Sound
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'order'} | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize Audio
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+  }, []);
+
+  const playNotificationSound = () => {
+    if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(e => console.log("Audio play blocked", e));
+    }
+  };
 
   // --- INITIALIZATION & SYNC ---
 
@@ -137,15 +154,39 @@ const App: React.FC = () => {
         setCheckIns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CheckInRecord)));
     }, handleError);
     
-    // Notifications Listener
+    // Notifications Listener with Pop-up Logic
     const unsubNotifs = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), (snapshot) => {
-        setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
+        const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        setNotifications(notifs);
+
+        // Detect NEW notifications for Pop-up
+        snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+                const data = change.doc.data() as Notification;
+                // Only show toast if notification is very recent (avoid showing old ones on refresh)
+                const isRecent = Date.now() - data.timestamp < 10000; // 10 seconds
+                
+                if (isRecent && currentUser) {
+                    const isForMe = data.userId === currentUser.id;
+                    const isAdmin = currentUser.role === 'admin';
+                    
+                    // Show if it's for me OR if I'm admin and it's a general system/order notification
+                    if (isForMe || (isAdmin && (data.type === 'order' || data.type === 'shift'))) {
+                        playNotificationSound();
+                        setToast({
+                            message: data.message,
+                            type: data.type === 'order' ? 'order' : 'success'
+                        });
+                    }
+                }
+            }
+        });
     }, handleError);
 
     return () => {
         try { unsubUsers(); unsubMenu(); unsubOrders(); unsubShifts(); unsubCheckIns(); unsubNotifs(); } catch(e) {}
     };
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.role]);
 
   // Handle Window Close/Refresh for Online Status
   useEffect(() => {
@@ -356,7 +397,11 @@ const App: React.FC = () => {
              addNotification(admin.id, `${currentUser?.name} đã ${type === 'in' ? 'Check-in' : 'Check-out'} lúc ${timeStr}`, 'shift');
         });
 
-        alert(`${type === 'in' ? 'Check-in' : 'Check-out'} thành công!`);
+        // Notify User (trigger toast)
+        if (currentUser) {
+            addNotification(currentUser.id, `${type === 'in' ? 'Check-in' : 'Check-out'} thành công!`, 'system');
+        }
+
     } catch (e: any) {
         console.error(e);
         alert(`Lỗi chấm công: ${e.message}`);
@@ -366,6 +411,7 @@ const App: React.FC = () => {
   return (
     <>
       <InstallPrompt />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
       {/* Connection Status Indicator */}
       {showConnectionStatus && (

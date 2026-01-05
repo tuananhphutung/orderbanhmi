@@ -20,7 +20,7 @@ export interface MenuItem {
   id: string;
   name: string;
   price: number;
-  category: 'food' | 'drink';
+  category: 'food' | 'topping';
   image?: string;
   stock: number;
 }
@@ -29,7 +29,7 @@ export interface CartItem extends MenuItem {
   quantity: number;
 }
 
-export type OrderSource = 'app' | 'grab' | 'shopee' | 'gojek' | 'be';
+export type OrderSource = 'app' | 'grab' | 'shopee' | 'be';
 
 export interface Order {
   id: string;

@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Viewport fit=cover handles notch screens on iPhone -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>Order Bánh Mì Hội An</title>
     
     <!-- PWA Settings -->
@@ -20,6 +22,7 @@
       body {
         font-family: 'Inter', sans-serif;
         overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile app feel */
+        -webkit-tap-highlight-color: transparent; /* Remove highlight on tap */
       }
     </style>
   <script type="importmap">
@@ -46,7 +49,7 @@
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
             .then(registration => {
-              console.log('SW registered: ', registration);
+              console.log('SW registered');
             })
             .catch(registrationError => {
               console.log('SW registration failed: ', registrationError);
