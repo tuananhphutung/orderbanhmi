@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, CalendarClock, Package, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarClock, Package, LogOut, Menu, X, BarChart2 } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StaffManager from './StaffManager';
 import ShiftManager from './ShiftManager';
 import InventoryManager from './InventoryManager';
+import RevenueReport from './RevenueReport';
 import { User, Order, MenuItem, CheckInRecord, Shift } from '../../types';
 
 interface AdminLayoutProps {
@@ -24,7 +25,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     menuItems, setMenuItems, shifts, setShifts, 
     checkIns, onNotify 
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'staff' | 'shifts' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'revenue' | 'staff' | 'shifts' | 'inventory'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
@@ -73,6 +74,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           >
             <LayoutDashboard size={20} /> Tổng quan
           </button>
+           <button 
+            onClick={() => { setActiveTab('revenue'); closeSidebar(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'revenue' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+          >
+            <BarChart2 size={20} /> Báo cáo doanh thu
+          </button>
           <button 
             onClick={() => { setActiveTab('staff'); closeSidebar(); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'staff' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
@@ -106,6 +113,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Content */}
       <div className="flex-1 overflow-auto bg-gray-100 pt-16 md:pt-0">
         {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} shifts={shifts} />}
+        {activeTab === 'revenue' && <RevenueReport orders={orders} />}
         {activeTab === 'staff' && <StaffManager users={users} setUsers={setUsers} />}
         {activeTab === 'shifts' && <ShiftManager users={users} shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={onNotify} />}
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
