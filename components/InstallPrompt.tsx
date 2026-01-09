@@ -1,56 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Share, PlusSquare, Smartphone, X } from 'lucide-react';
+import { Download, Share, X, ShieldCheck, Smartphone, PlusSquare } from 'lucide-react';
 
 const InstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if running in standalone mode (already installed)
+    // 1. Check blocked status from LocalStorage
+    const dismissed = localStorage.getItem('pwa_install_dismissed_v2');
+    if (dismissed === 'true') {
+        setIsDismissed(true);
+        return;
+    }
+
+    // 2. Check Standalone Mode (Already installed)
     const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
                                (window.navigator as any).standalone === true;
     
-    setIsStandalone(isInStandaloneMode);
-
     if (isInStandaloneMode) {
       setShowPrompt(false);
       return;
     }
 
-    // Detect iOS
+    // 3. Detect iOS
     const userAgent = window.navigator.userAgent.toLowerCase();
     const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIosDevice);
 
-    if (isIosDevice) {
-      // On iOS, we can't detect "ready", so we show instructions immediately
-      setShowPrompt(true);
-    } else {
-      // On Android/Desktop, we hide the prompt initially and ONLY show it when the browser event fires.
-      // This prevents the "button doesn't work" issue.
-      setShowPrompt(false);
-    }
-
-    // Capture the install prompt event (Android/Chrome)
+    // 4. Capture Android/Desktop install event
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Now that we have the event, we can safely show the button
-      setShowPrompt(true);
+      // Wait a bit before showing to not annoy user immediately on load
+      setTimeout(() => setShowPrompt(true), 3000);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
+    // Fallback: If no event fires (e.g., iOS or event missed), show anyway after 3s for instruction
+    const timer = setTimeout(() => {
+        if (!isInStandaloneMode && !dismissed) {
+            setShowPrompt(true);
+        }
+    }, 3000);
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      clearTimeout(timer);
     };
   }, []);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      // Trigger the native browser dialog immediately
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === 'accepted') {
@@ -58,81 +61,75 @@ const InstallPrompt: React.FC = () => {
         setShowPrompt(false); 
       }
     } else {
-        // If we get here, it means the browser is not supported or event is missing.
-        // We removed the alert() as requested. 
-        // We can just keep the UI open or log to console.
-        console.log("Install prompt not available");
+        // Should not happen often on Android if logic is right, but safe fallback
+        alert("Vui lòng sử dụng menu trình duyệt -> Thêm vào màn hình chính");
     }
   };
 
-  if (!showPrompt || isStandalone) return null;
+  const handleDismiss = () => {
+      setShowPrompt(false);
+      setIsDismissed(true);
+      // Permanently dismiss to avoid annoying the user
+      localStorage.setItem('pwa_install_dismissed_v2', 'true');
+  };
+
+  if (!showPrompt || isDismissed) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-gray-900/95 backdrop-blur-sm flex items-end md:items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-10 fade-in duration-300">
+    <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[100] animate-in slide-in-from-bottom-10 duration-500">
+      <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-5 relative overflow-hidden">
         
-        {/* Header */}
-        <div className="bg-orange-500 p-6 text-center relative">
-          <div className="w-16 h-16 bg-white rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-4">
-            <span className="text-2xl font-bold text-orange-500">BM</span>
-          </div>
-          <h2 className="text-white text-xl font-bold">Cài đặt Ứng dụng</h2>
-          <p className="text-orange-100 text-sm mt-1">Để sử dụng ổn định và tốt nhất</p>
-        </div>
+        {/* Decorative Background */}
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-orange-100 rounded-full opacity-50 blur-xl"></div>
 
-        {/* Body */}
-        <div className="p-6">
-          <p className="text-gray-600 text-center mb-6 text-sm">
-            Ứng dụng POS Bánh Mì Hội An yêu cầu được cài đặt vào máy để truy cập đầy đủ tính năng và hoạt động mượt mà như app thật.
-          </p>
+        {/* Close Button */}
+        <button 
+            onClick={handleDismiss}
+            className="absolute top-2 right-2 p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors z-10"
+        >
+            <X size={16} />
+        </button>
 
-          {isIOS ? (
-            /* iOS Instructions - Apple forces manual steps */
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-600 rounded-full">
-                  <Share size={18} />
+        <div className="flex gap-4">
+            <div className="flex-shrink-0">
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg flex items-center justify-center text-white font-bold text-lg">
+                    BM
                 </div>
-                <p className="text-sm text-gray-700">1. Nhấn vào nút <span className="font-bold">Chia sẻ</span> ở thanh dưới cùng.</p>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="w-8 h-8 flex items-center justify-center bg-gray-200 text-gray-700 rounded-full">
-                  <PlusSquare size={18} />
-                </div>
-                <p className="text-sm text-gray-700">2. Chọn <span className="font-bold">Thêm vào MH chính</span> (Add to Home Screen).</p>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div className="w-8 h-8 flex items-center justify-center bg-orange-100 text-orange-600 rounded-full">
-                    <Smartphone size={18} />
-                </div>
-                <p className="text-sm text-gray-700">3. Mở app từ màn hình chính để bắt đầu.</p>
-              </div>
             </div>
-          ) : (
-            /* Android/Chrome - Button triggers native prompt immediately */
-            <div className="space-y-4">
-               <div className="flex justify-center">
-                    <Smartphone className="w-24 h-24 text-gray-200" />
-               </div>
-               <button
-                onClick={handleInstallClick}
-                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 animate-pulse"
-              >
-                <Download size={20} />
-                Cài đặt ngay
-              </button>
+            
+            <div className="flex-1">
+                <h3 className="font-bold text-gray-900 leading-tight mb-1">Cài App Order</h3>
+                <p className="text-xs text-gray-500 leading-relaxed mb-3">
+                    Cài đặt để sử dụng mượt mà, full màn hình và không cần đăng nhập lại.
+                </p>
+
+                {isIOS ? (
+                    <div className="bg-gray-50 rounded-lg p-2 text-xs text-gray-700 border border-gray-100 space-y-2">
+                        <div className="flex items-center gap-2">
+                            <Share size={14} className="text-blue-500" />
+                            <span>Bấm <b>Chia sẻ</b> (Share)</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <PlusSquare size={14} className="text-gray-600" />
+                            <span>Chọn <b>Thêm vào MH chính</b></span>
+                        </div>
+                    </div>
+                ) : (
+                    <button
+                        onClick={handleInstallClick}
+                        className="w-full bg-black hover:bg-gray-800 text-white text-sm font-bold py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition-transform active:scale-95"
+                    >
+                        <Download size={16} /> Cài đặt ngay
+                    </button>
+                )}
             </div>
-          )}
         </div>
         
-        {/* Footer */}
-        <div className="bg-gray-50 p-3 text-center border-t border-gray-100">
-            <button 
-                onClick={() => setShowPrompt(false)} 
-                className="text-gray-400 text-xs hover:text-gray-600 underline"
-            >
-                Tiếp tục sử dụng trên trình duyệt (Không khuyến khích)
-            </button>
+        <div className="mt-3 pt-2 border-t border-gray-50 flex justify-between items-center">
+             <div className="flex items-center gap-1 text-[10px] text-green-600 font-medium">
+                 <ShieldCheck size={10} /> Verified Application
+             </div>
+             {isIOS && <span className="text-[10px] text-gray-400">iOS Safari</span>}
         </div>
       </div>
     </div>
