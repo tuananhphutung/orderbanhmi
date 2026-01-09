@@ -1,19 +1,25 @@
 
-const CACHE_NAME = 'bami-pos-v3-native';
+const CACHE_NAME = 'banhmi-pos-v8-fix';
+const urlsToCache = [
+  './',
+  './index.html',
+  './manifest.json',
+  './vite.svg'
+];
 
-// Install event
 self.addEventListener('install', (event) => {
-  // Force the waiting service worker to become the active service worker
   self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(urlsToCache).catch(err => console.error("Cache addAll failed", err));
+    })
+  );
 });
 
-// Activate event
 self.addEventListener('activate', (event) => {
-  // Tell the active service worker to take control of the page immediately
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      // Clean up old caches
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
@@ -27,31 +33,16 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event with Network First strategy for HTML/Data, Cache First for Assets
 self.addEventListener('fetch', (event) => {
-  if (!event.request.url.startsWith(self.location.origin)) return;
-
-  // For navigating to the page (HTML), try network first to get latest version
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.match(event.request);
-        })
+      fetch(event.request).catch(() => caches.match('./index.html'))
     );
     return;
   }
-
-  // For images and other assets, Stale-While-Revalidate
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-        });
-        return networkResponse;
-      });
-      return cachedResponse || fetchPromise;
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
     })
   );
 });

@@ -25,6 +25,7 @@
         overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile app feel */
         -webkit-tap-highlight-color: transparent; /* Remove highlight on tap */
         user-select: none; /* Make it feel native */
+        background-color: #fff7ed; /* orange-50 */
       }
       input, textarea {
         user-select: text;
@@ -50,12 +51,12 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Force SW registration for PWA installability criteria
+      // Standard SW Registration using relative path
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js', { scope: './' })
-            .then(reg => console.log('SW Success:', reg.scope))
-            .catch(err => console.log('SW Fail:', err));
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('SW Registered'))
+            .catch(err => console.log('SW Error:', err));
         });
       }
     </script>
