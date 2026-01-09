@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { MenuItem, CartItem, OrderSource } from '../types';
-import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, ChevronUp, Trash2, Tag, User, Phone, Video, Search, Infinity } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Trash2, Tag, User, Phone, Video, Search } from 'lucide-react';
 
 interface OrderInterfaceProps {
   cart: CartItem[];
@@ -301,13 +301,13 @@ const CartContent = ({
         <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
              {/* Source Selector */}
              <div className="flex rounded-lg bg-white p-1 border border-gray-200 shadow-sm">
-                {(['app', 'grab', 'shopee', 'be'] as OrderSource[]).map(src => (
+                {(['app', 'grab', 'shopee', 'xanhsm'] as OrderSource[]).map(src => (
                     <button
                         key={src}
                         onClick={() => setOrderSource(src)}
-                        className={`flex-1 py-1.5 text-xs font-bold uppercase rounded-md transition-colors ${orderSource === src ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}`}
+                        className={`flex-1 py-1.5 text-xs font-bold uppercase rounded-md transition-colors ${orderSource === src ? (src === 'xanhsm' ? 'bg-cyan-600 text-white' : 'bg-gray-800 text-white') : 'text-gray-400 hover:text-gray-600'}`}
                     >
-                        {src === 'app' ? 'Tại quán' : src}
+                        {src === 'app' ? 'Tại quán' : src === 'xanhsm' ? 'Xanh SM' : src}
                     </button>
                 ))}
              </div>

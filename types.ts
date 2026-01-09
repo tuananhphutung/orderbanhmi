@@ -29,7 +29,8 @@ export interface CartItem extends MenuItem {
   quantity: number;
 }
 
-export type OrderSource = 'app' | 'grab' | 'shopee' | 'be';
+// Updated 'be' to 'xanhsm'
+export type OrderSource = 'app' | 'grab' | 'shopee' | 'xanhsm';
 
 export interface Order {
   id: string;

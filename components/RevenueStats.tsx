@@ -160,9 +160,10 @@ const RevenueStats: React.FC<RevenueStatsProps> = ({ orders }) => {
                              order.source === 'app' ? 'bg-gray-100 text-gray-800 border-gray-200' :
                              order.source === 'grab' ? 'bg-green-50 text-green-700 border-green-200' :
                              order.source === 'shopee' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                             order.source === 'xanhsm' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : // Xanh SM style
                              'bg-blue-50 text-blue-700 border-blue-200'
                          }`}>
-                             {order.source === 'app' ? 'Tại quán' : order.source.toUpperCase()}
+                             {order.source === 'app' ? 'Tại quán' : order.source === 'xanhsm' ? 'Xanh SM' : order.source.toUpperCase()}
                          </span>
                          <div className="mt-1 text-xs text-gray-400">
                              {order.paymentMethod === 'cash' ? 'Tiền mặt' : 'CK NH'}
