@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginFormData } from '../types';
-import { User, Lock, Phone, UserPlus, ShieldCheck, Download, Smartphone } from 'lucide-react';
+import { User, Lock, Phone, ShieldCheck, Download, Bug } from 'lucide-react';
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void;
@@ -47,6 +47,11 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
       }
   };
 
+  const handleReportError = () => {
+    const info = `UserAgent: ${navigator.userAgent}\nScreen: ${window.innerWidth}x${window.innerHeight}\nTime: ${new Date().toLocaleString()}`;
+    alert(`Thông tin thiết bị:\n\n${info}\n\nVui lòng chụp màn hình này gửi cho kỹ thuật viên nếu gặp lỗi.`);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === 'login') {
@@ -69,13 +74,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
        {/* Main Card */}
        <div className="bg-white w-full max-w-[400px] rounded-3xl shadow-2xl relative overflow-hidden border border-gray-100">
           
-          {/* Top Right Install Button */}
-          <button 
-            onClick={handleInstallClick}
-            className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/90 hover:bg-orange-50 text-gray-600 hover:text-orange-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm z-20 border border-gray-200 backdrop-blur-sm active:scale-95"
-          >
-            <Download size={12} /> Cài App
-          </button>
+          {/* Top Buttons */}
+          <div className="absolute top-4 right-4 z-20 flex gap-2">
+            <button 
+                onClick={handleInstallClick}
+                className="flex items-center gap-1.5 bg-white/90 hover:bg-orange-50 text-gray-600 hover:text-orange-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm border border-gray-200 backdrop-blur-sm active:scale-95"
+            >
+                <Download size={12} /> Cài App
+            </button>
+            <button 
+                onClick={handleReportError}
+                className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm border border-red-100 backdrop-blur-sm active:scale-95"
+            >
+                <Bug size={12} /> Lỗi
+            </button>
+          </div>
 
           {/* Header Section */}
           <div className="bg-gradient-to-br from-orange-500 to-red-500 p-8 pt-12 pb-16 text-center relative">

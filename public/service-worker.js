@@ -1,11 +1,10 @@
 
-const CACHE_NAME = 'banhmi-pos-v12-fixed-assets';
-// Removed './' prefix for files to ensure they are found relative to the service worker in dist
+const CACHE_NAME = 'banhmi-pos-v13-no-svg-error';
+// Removed 'vite.svg' because it does not exist in the source
 const urlsToCache = [
   './',
   'index.html',
-  'manifest.json',
-  'vite.svg'
+  'manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
