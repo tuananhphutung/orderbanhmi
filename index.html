@@ -51,11 +51,11 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Standard SW Registration using relative path
+      // Standard SW Registration using relative path to fix 'blob:' protocol error
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW Registered'))
+            .then(reg => console.log('SW Registered Scope:', reg.scope))
             .catch(err => console.log('SW Error:', err));
         });
       }

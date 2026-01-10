@@ -37,7 +37,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
           const { outcome } = await deferredPrompt.userChoice;
           if (outcome === 'accepted') setDeferredPrompt(null);
       } else {
-          alert("Để cài đặt trên iOS/Mobile:\n1. Nhấn nút Chia sẻ (Share)\n2. Chọn 'Thêm vào màn hình chính' (Add to Home Screen)");
+          // Detect iOS
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+          if (isIOS) {
+              alert("Để cài đặt trên iPhone/iPad:\n1. Nhấn nút Chia sẻ (Share) ở giữa đáy màn hình\n2. Chọn 'Thêm vào màn hình chính' (Add to Home Screen)");
+          } else {
+              alert("Vui lòng sử dụng menu trình duyệt -> Thêm vào màn hình chính (Install App)");
+          }
       }
   };
 
@@ -55,6 +61,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
   const switchToAdmin = () => {
       setMode('login');
       setUsername('admin');
+      setPassword(''); // Clear password for security
   };
 
   return (
@@ -65,7 +72,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
           {/* Top Right Install Button */}
           <button 
             onClick={handleInstallClick}
-            className="absolute top-4 right-4 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-gray-600 hover:text-orange-600 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm z-10 border border-gray-200"
+            className="absolute top-4 right-4 flex items-center gap-1.5 bg-white/90 hover:bg-orange-50 text-gray-600 hover:text-orange-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm z-20 border border-gray-200 backdrop-blur-sm active:scale-95"
           >
             <Download size={12} /> Cài App
           </button>
@@ -82,7 +89,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
           </div>
 
           {/* Form Section - Overlapping Header */}
-          <div className="-mt-8 bg-white rounded-t-3xl px-8 pt-8 pb-8 relative z-0">
+          <div className="-mt-8 bg-white rounded-t-3xl px-8 pt-8 pb-8 relative z-10">
              
              {/* Toggle Tabs */}
              <div className="flex p-1 bg-gray-100 rounded-xl mb-6">
