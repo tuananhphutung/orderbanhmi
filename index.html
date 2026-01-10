@@ -17,6 +17,16 @@
     <meta name="apple-mobile-web-app-title" content="BM Hội An">
     <link rel="apple-touch-icon" href="./vite.svg">
 
+    <script>
+      // Silence Tailwind CDN warning for production
+      (function() {
+        var originalWarn = console.warn;
+        console.warn = function(message) {
+          if (typeof message === 'string' && message.includes('cdn.tailwindcss.com')) return;
+          originalWarn.apply(console, arguments);
+        };
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -51,10 +61,10 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Standard SW Registration using relative path to fix 'blob:' protocol error
+      // Standard SW Registration using 'service-worker.js' to avoid 404
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
+          navigator.serviceWorker.register('./service-worker.js')
             .then(reg => console.log('SW Registered Scope:', reg.scope))
             .catch(err => console.log('SW Error:', err));
         });
