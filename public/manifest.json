@@ -1,0 +1,50 @@
+
+{
+  "name": "Bánh Mì Hội An POS",
+  "short_name": "BM Hội An",
+  "start_url": "./",
+  "id": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "description": "Hệ thống quản lý bán hàng Bánh Mì Hội An",
+  "orientation": "portrait",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "./vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./vite.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80",
+      "sizes": "800x600",
+      "type": "image/jpg",
+      "form_factor": "wide",
+      "label": "Giao diện bán hàng"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1556742049-0cfed4f7a07d?auto=format&fit=crop&w=400&q=80",
+      "sizes": "400x800",
+      "type": "image/jpg",
+      "form_factor": "narrow",
+      "label": "Giao diện Mobile"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Gọi món",
+      "url": "./",
+      "icons": [{ "src": "./vite.svg", "sizes": "192x192" }]
+    }
+  ]
+}

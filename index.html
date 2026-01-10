@@ -52,7 +52,9 @@
     "firebase/storage": "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
     "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-    "firebase/": "https://esm.sh/firebase@^12.7.0/"
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
+    "vite": "https://esm.sh/vite@^7.3.1"
   }
 }
 </script>
@@ -61,7 +63,7 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Standard SW Registration using 'service-worker.js' to avoid 404
+      // Register service worker from the correct path (./service-worker.js) which will be at root of dist
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./service-worker.js')
