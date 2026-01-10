@@ -4,7 +4,6 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png" />
-    <!-- Viewport fit=cover handles notch screens on iPhone -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Order Bánh Mì Hội An</title>
     
@@ -18,7 +17,6 @@
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png">
 
     <script>
-      // Silence Tailwind CDN warning for production
       (function() {
         var originalWarn = console.warn;
         console.warn = function(message) {
@@ -32,10 +30,10 @@
     <style>
       body {
         font-family: 'Inter', sans-serif;
-        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile app feel */
-        -webkit-tap-highlight-color: transparent; /* Remove highlight on tap */
-        user-select: none; /* Make it feel native */
-        background-color: #fff7ed; /* orange-50 */
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        background-color: #fff7ed;
       }
       input, textarea {
         user-select: text;
@@ -63,12 +61,38 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Register service worker from the correct path (service-worker.js) which will be at root of dist
+      // Force update service worker immediately
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('SW Registered Scope:', reg.scope))
+            .then(reg => {
+              console.log('SW Registered Scope:', reg.scope);
+              // Check for updates
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker == null) return;
+                installingWorker.onstatechange = () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('New content available; please refresh.');
+                      // Optional: Force reload to apply updates immediately for user convenience in this glitchy state
+                      // window.location.reload(); 
+                    } else {
+                      console.log('Content is cached for offline use.');
+                    }
+                  }
+                };
+              };
+            })
             .catch(err => console.log('SW Error:', err));
+        });
+        
+        // Ensure controller change refreshes the page to avoid stale content
+        let refreshing;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
         });
       }
     </script>

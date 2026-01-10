@@ -2,8 +2,8 @@
 {
   "name": "Bánh Mì Hội An POS",
   "short_name": "BM Hội An",
-  "start_url": "./",
-  "id": "./",
+  "start_url": "index.html",
+  "id": "banhmipos",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f97316",
@@ -43,7 +43,7 @@
   "shortcuts": [
     {
       "name": "Gọi món",
-      "url": "./",
+      "url": "index.html",
       "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/3014/3014520.png", "sizes": "192x192" }]
     }
   ]
