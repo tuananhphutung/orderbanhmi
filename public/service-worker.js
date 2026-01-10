@@ -1,10 +1,11 @@
 
-const CACHE_NAME = 'banhmi-pos-v11-build-fix';
+const CACHE_NAME = 'banhmi-pos-v12-fixed-assets';
+// Removed './' prefix for files to ensure they are found relative to the service worker in dist
 const urlsToCache = [
   './',
-  './index.html',
-  './manifest.json',
-  './vite.svg'
+  'index.html',
+  'manifest.json',
+  'vite.svg'
 ];
 
 self.addEventListener('install', (event) => {
@@ -42,7 +43,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('./index.html') || caches.match('./');
+          return caches.match('index.html') || caches.match('./');
         })
     );
     return;

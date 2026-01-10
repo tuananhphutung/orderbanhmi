@@ -3,19 +3,19 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="vite.svg" />
     <!-- Viewport fit=cover handles notch screens on iPhone -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Order Bánh Mì Hội An</title>
     
     <!-- PWA Settings -->
-    <link rel="manifest" href="./manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f97316">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BM Hội An">
-    <link rel="apple-touch-icon" href="./vite.svg">
+    <link rel="apple-touch-icon" href="vite.svg">
 
     <script>
       // Silence Tailwind CDN warning for production
@@ -63,10 +63,10 @@
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
     <script>
-      // Register service worker from the correct path (./service-worker.js) which will be at root of dist
+      // Register service worker from the correct path (service-worker.js) which will be at root of dist
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js')
+          navigator.serviceWorker.register('service-worker.js')
             .then(reg => console.log('SW Registered Scope:', reg.scope))
             .catch(err => console.log('SW Error:', err));
         });
