@@ -10,11 +10,18 @@
     <!-- PWA Settings -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f97316">
-    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- iOS Specific Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BM Hội An">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- iOS Icons - High Res -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png">
+    <link rel="apple-touch-icon" sizes="167x167" href="https://cdn-icons-png.flaticon.com/512/3014/3014520.png">
 
     <script>
       (function() {
@@ -34,6 +41,9 @@
         -webkit-tap-highlight-color: transparent;
         user-select: none;
         background-color: #fff7ed;
+        /* Safe area support for notched phones */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
       }
       input, textarea {
         user-select: text;

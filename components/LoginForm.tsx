@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginFormData } from '../types';
-import { User, Lock, Phone, ShieldCheck, HelpCircle } from 'lucide-react';
+import { User, Lock, Phone, ShieldCheck, HelpCircle, Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void;
@@ -15,11 +15,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
   // Login State
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Toggle Login Pass
 
   // Register State
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPass, setRegPass] = useState('');
+  const [showRegPass, setShowRegPass] = useState(false); // Toggle Reg Pass
 
   // Capture install prompt
   useEffect(() => {
@@ -122,13 +124,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
                         <div className="relative group">
                             <Lock className="absolute left-3 top-3 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={20} />
                             <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••"
-                            className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white transition-all font-medium text-gray-800"
+                            className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white transition-all font-medium text-gray-800"
                             required
                             />
+                            <button 
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
                         </div>
                     </div>
                   </>
@@ -159,13 +168,20 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
                     <div className="relative">
                         <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
                         <input
-                        type="password"
+                        type={showRegPass ? "text" : "password"}
                         value={regPass}
                         onChange={(e) => setRegPass(e.target.value)}
                         placeholder="Mật khẩu"
-                        className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
+                        className="w-full pl-10 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-orange-500 focus:bg-white transition-all font-medium"
                         required
                         />
+                        <button 
+                            type="button"
+                            onClick={() => setShowRegPass(!showRegPass)}
+                            className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                        >
+                            {showRegPass ? <EyeOff size={20} /> : <Eye size={20} />}
+                        </button>
                     </div>
                   </>
                 )}

@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { User } from '../../types';
-import { UserPlus, Lock, Unlock, Trash2, Check, X } from 'lucide-react';
+import { UserPlus, Lock, Unlock, Trash2, Check, Eye, EyeOff } from 'lucide-react';
 import { db } from '../../firebase';
 import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
@@ -12,6 +13,7 @@ interface StaffManagerProps {
 const StaffManager: React.FC<StaffManagerProps> = ({ users }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [newStaff, setNewStaff] = useState({ name: '', phone: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false); // Toggle Password visibility
 
   const activeStaff = users.filter(u => u.role === 'staff' && u.status === 'active');
   const pendingStaff = users.filter(u => u.role === 'staff' && u.status === 'pending');
@@ -121,7 +123,22 @@ const StaffManager: React.FC<StaffManagerProps> = ({ users }) => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input type="text" placeholder="Họ tên" className="p-2 border rounded" value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
                 <input type="text" placeholder="Số điện thoại (Login ID)" className="p-2 border rounded" value={newStaff.phone} onChange={e => setNewStaff({...newStaff, phone: e.target.value})} />
-                <input type="text" placeholder="Mật khẩu" className="p-2 border rounded" value={newStaff.password} onChange={e => setNewStaff({...newStaff, password: e.target.value})} />
+                
+                <div className="relative">
+                    <input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Mật khẩu" 
+                        className="p-2 border rounded w-full pr-10" 
+                        value={newStaff.password} 
+                        onChange={e => setNewStaff({...newStaff, password: e.target.value})} 
+                    />
+                    <button 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                    >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                </div>
             </div>
             <button onClick={handleAddStaff} className="mt-4 bg-orange-500 text-white px-4 py-2 rounded font-bold w-full md:w-auto">Lưu nhân viên</button>
         </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { MenuItem, CartItem, OrderSource } from '../types';
 import { ShoppingCart, Plus, Minus, UtensilsCrossed, X, Trash2, Tag, User, Phone, Video, Search } from 'lucide-react';
@@ -79,6 +80,9 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
   // Filter Logic
   const filteredItems = useMemo(() => {
       return menuItems.filter(item => {
+          // BỎ QUA các Món Mẹ (chỉ là container, không bán)
+          if (item.isParent) return false;
+
           // If category is somehow 'drink' in DB, it will show in 'all' but not have a specific tab
           const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
           const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());

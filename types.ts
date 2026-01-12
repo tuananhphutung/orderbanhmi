@@ -23,6 +23,8 @@ export interface MenuItem {
   category: 'food' | 'topping';
   image?: string;
   stock: number;
+  isParent?: boolean; // True nếu đây là Món Mẹ (Nhóm)
+  parentId?: string; // ID của Món Mẹ nếu đây là món con
 }
 
 export interface CartItem extends MenuItem {

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { User, CheckInRecord, Shift } from '../types';
-import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload, Camera } from 'lucide-react';
+import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload, Camera, Eye, EyeOff } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, uploadFileToFirebase } from '../firebase';
 
@@ -21,6 +21,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   // Profile Edit State
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({ name: user.name, password: user.password || '', avatar: user.avatar || '' });
+  const [showEditPassword, setShowEditPassword] = useState(false); // Toggle Password in Edit Mode
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
@@ -29,57 +30,66 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  // --- LOGIC CHECK-IN MẠNH MẼ CHO ANDROID ---
+  // --- LOGIC CHECK-IN BẮT BUỘC GPS CHÍNH XÁC CAO ---
   const handleActionClick = async (type: 'in' | 'out') => {
     setCheckType(type);
     setCheckingIn(true);
     setErrorMsg('');
 
     if (!navigator.geolocation) {
-       alert("Thiết bị không hỗ trợ GPS. Đang mở Camera...");
-       openCamera();
+       alert("Trình duyệt này không hỗ trợ định vị. Vui lòng sử dụng Chrome/Safari.");
+       setCheckingIn(false);
        return;
     }
 
-    // Cấu hình GPS: Ưu tiên chính xác cao, chờ tối đa 15s
-    const highAccuracyOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-    // Cấu hình GPS dự phòng: Chấp nhận sai số, ưu tiên tốc độ (Wifi/4G)
-    const lowAccuracyOptions = { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 };
+    // Cấu hình GPS: 
+    // - enableHighAccuracy: true (Bắt buộc dùng chip GPS để lấy tọa độ chính xác nhất)
+    // - timeout: 20000 (Cho thiết bị 20s để bắt sóng vệ tinh, tránh timeout quá sớm)
+    // - maximumAge: 0 (Không dùng vị trí cache cũ, bắt buộc lấy mới)
+    const highAccuracyOptions = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
 
     const handleSuccess = (position: GeolocationPosition) => {
+        // Kiểm tra độ chính xác (Accuracy)
+        const accuracy = position.coords.accuracy;
+        console.log("Độ chính xác GPS:", accuracy, "mét");
+
+        if (accuracy > 100) {
+             // Nếu sai số > 100m (thường do dùng Wifi/4G thay vì GPS), cảnh báo nhưng vẫn cho phép (có thể log lại)
+             // Hoặc chặn nếu muốn cực kỳ nghiêm ngặt. Ở đây cảnh báo nhẹ.
+             // alert(`Độ chính xác GPS thấp (${Math.round(accuracy)}m). Vui lòng đứng ở nơi thoáng hơn.`);
+        }
+
         onCheckIn(position.coords.latitude, position.coords.longitude, type);
         setCheckingIn(false);
     };
 
     const handleError = (error: GeolocationPositionError) => {
-        console.warn("GPS Error 1:", error);
+        console.warn("GPS Error:", error);
+        setCheckingIn(false);
         
-        // Nếu lỗi Timeout (3) hoặc Không khả dụng (2), thử lại với chế độ Low Accuracy
-        if (error.code === 3 || error.code === 2) {
-             console.log("Thử lại với GPS chế độ thấp...");
-             navigator.geolocation.getCurrentPosition(
-                 handleSuccess,
-                 (retryError) => {
-                     // Nếu vẫn lỗi -> Chuyển sang Camera
-                     console.warn("GPS Error 2:", retryError);
-                     setCheckingIn(false);
-                     const msg = "Không bắt được sóng GPS. Vui lòng CHỤP ẢNH check-in.";
-                     setErrorMsg(msg);
-                     if(confirm(msg)) {
-                         openCamera();
-                     }
-                 },
-                 lowAccuracyOptions
-             );
+        // Phân loại lỗi chi tiết để bắt buộc bật GPS
+        if (error.code === error.PERMISSION_DENIED) { // Code 1
+            const msg = "⚠️ ỨNG DỤNG BỊ CHẶN QUYỀN VỊ TRÍ.\n\nBắt buộc phải cấp quyền để chấm công.\nHãy vào: Cài đặt -> Ứng dụng -> Order Bánh Mì -> Quyền -> Vị trí -> Cho phép.";
+            setErrorMsg(msg);
+            alert(msg);
         } 
-        // Nếu lỗi Quyền bị từ chối (1)
-        else if (error.code === 1) {
-            setCheckingIn(false);
-            setErrorMsg("⚠️ Ứng dụng chưa được cấp quyền Vị trí.\n\nHãy vào: Cài đặt -> Ứng dụng -> Order Bánh Mì -> Quyền -> Vị trí -> Cho phép.");
-            alert("Bạn cần cấp quyền Vị Trí để chấm công!\n\nNếu không bật được, hãy dùng Camera.");
+        else if (error.code === error.POSITION_UNAVAILABLE) { // Code 2: Thường do TẮT GPS (Location Services)
+             const msg = "⛔ BẠN CHƯA BẬT ĐỊNH VỊ (GPS) TRÊN ĐIỆN THOẠI.\n\nVui lòng vuốt thanh thông báo xuống và BẬT VỊ TRÍ, sau đó thử lại.";
+             setErrorMsg(msg);
+             alert(msg);
+             // Không cho phép dùng Camera fallback ngay lập tức ở đây, bắt buộc bật GPS.
+        } 
+        else if (error.code === error.TIMEOUT) { // Code 3
+             // Timeout: Có thể do GPS yếu hoặc đang ở trong nhà kín
+             const msg = "📡 Sóng GPS quá yếu hoặc bị che khuất.\n\nVui lòng di chuyển ra nơi thoáng hơn và thử lại.";
+             setErrorMsg(msg);
+             
+             // Chỉ cho phép camera khi đã cố gắng bật GPS nhưng sóng yếu
+             if(confirm(`${msg}\n\nBạn có muốn chuyển sang chụp ảnh chấm công không?`)) {
+                 openCamera();
+             }
         } else {
-            setCheckingIn(false);
-            openCamera(); // Lỗi khác -> Camera luôn
+             alert("Lỗi định vị không xác định: " + error.message);
         }
     };
 
@@ -223,13 +233,21 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
                             className="w-full bg-white/10 border border-white/30 rounded px-2 py-1 text-white placeholder-white/50" 
                             placeholder="Tên nhân viên"
                         />
-                        <input 
-                            type="password"
-                            value={editForm.password} 
-                            onChange={e => setEditForm({...editForm, password: e.target.value})}
-                            className="w-full bg-white/10 border border-white/30 rounded px-2 py-1 text-white placeholder-white/50" 
-                            placeholder="Mật khẩu mới"
-                        />
+                        <div className="relative">
+                            <input 
+                                type={showEditPassword ? "text" : "password"}
+                                value={editForm.password} 
+                                onChange={e => setEditForm({...editForm, password: e.target.value})}
+                                className="w-full bg-white/10 border border-white/30 rounded px-2 py-1 text-white placeholder-white/50 pr-10" 
+                                placeholder="Mật khẩu mới"
+                            />
+                             <button 
+                                onClick={() => setShowEditPassword(!showEditPassword)}
+                                className="absolute right-2 top-1.5 text-white/70 hover:text-white"
+                            >
+                                {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <button 
@@ -335,13 +353,16 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
             </p>
             {errorMsg && (
                 <div className="mt-3 bg-red-50 p-3 rounded-lg flex flex-col items-center text-center animate-in fade-in">
-                    <p className="text-red-500 text-sm font-bold mb-2">{errorMsg}</p>
-                    <button 
-                        onClick={() => openCamera()}
-                        className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-600"
-                    >
-                        <Camera size={16} /> Chụp ảnh báo cáo
-                    </button>
+                    <p className="text-red-500 text-sm font-bold mb-2 whitespace-pre-line">{errorMsg}</p>
+                    {/* Chỉ hiển thị nút Camera nếu lỗi không phải do Tắt GPS (Code 2) */}
+                    {!errorMsg.includes("CHƯA BẬT ĐỊNH VỊ") && (
+                         <button 
+                            onClick={() => openCamera()}
+                            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-600 mt-2"
+                        >
+                            <Camera size={16} /> Chụp ảnh thay thế
+                        </button>
+                    )}
                 </div>
             )}
 
