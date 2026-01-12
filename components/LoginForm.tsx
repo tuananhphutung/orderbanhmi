@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginFormData } from '../types';
-import { User, Lock, Phone, ShieldCheck } from 'lucide-react';
+import { User, Lock, Phone, ShieldCheck, HelpCircle } from 'lucide-react';
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void;
@@ -32,8 +32,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
   }, []);
 
   const handleReportError = () => {
-    const info = `UserAgent: ${navigator.userAgent}\nScreen: ${window.innerWidth}x${window.innerHeight}\nTime: ${new Date().toLocaleString()}`;
-    alert(`Thông tin hỗ trợ kỹ thuật:\n\n${info}\n\nVui lòng liên hệ quản trị viên để được cấp tài khoản.`);
+    const info = `App Version: 1.0.0\nUserAgent: ${navigator.userAgent}\nScreen: ${window.innerWidth}x${window.innerHeight}`;
+    alert(`Liên hệ Kỹ thuật viên:\n\nHotline: 0905.xxx.xxx\n\nThông tin thiết bị:\n${info}`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,20 +54,22 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4">
+    <div className="w-full min-h-screen bg-orange-50 flex items-center justify-center p-4 relative">
+       
+       {/* Nút Hỗ trợ nhỏ ở góc phải trên cùng */}
+       <div className="absolute top-4 right-4 z-50">
+          <button 
+            onClick={handleReportError}
+            className="flex items-center gap-1 bg-white/80 backdrop-blur border border-gray-200 shadow-sm px-3 py-1.5 rounded-full text-xs font-bold text-gray-600 hover:text-orange-600 hover:bg-white transition-all"
+          >
+             <HelpCircle size={14} />
+             <span>Hỗ trợ</span>
+          </button>
+       </div>
+
        {/* Main Card */}
        <div className="bg-white w-full max-w-[400px] rounded-3xl shadow-2xl relative overflow-hidden border border-gray-100">
           
-          {/* Top Button - Single Text Button */}
-          <div className="absolute top-4 right-4 z-20">
-            <button 
-                onClick={handleReportError}
-                className="text-[11px] font-bold text-white/90 hover:text-white border border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full transition-all tracking-wide"
-            >
-                HỖ TRỢ
-            </button>
-          </div>
-
           {/* Header Section */}
           <div className="bg-gradient-to-br from-orange-500 to-red-500 p-8 pt-12 pb-16 text-center relative">
             <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[url('https://www.transparenttextures.com/patterns/food.png')]"></div>

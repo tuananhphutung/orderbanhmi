@@ -1,8 +1,8 @@
+
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 
 // --- CẤU HÌNH FIREBASE ---
-// Lưu ý: Đảm bảo bạn đang xem đúng Project ID: "order-a829b" trên Firebase Console
 const firebaseConfig = {
   apiKey: "AIzaSyDlnHfLcp8Cao0GuThmt7zqGxGaOPuwHDI",
   authDomain: "order-a829b.firebaseapp.com",
@@ -16,15 +16,22 @@ const firebaseConfig = {
 
 // Khởi tạo Firebase
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+// Cấu hình Firestore chuyên sâu cho Mobile App (Android/iOS)
+// 1. localCache: Lưu dữ liệu offline. Khi mất mạng, app vẫn order được, có mạng tự đồng bộ.
+// 2. experimentalForceLongPolling: Bắt buộc dùng Long Polling thay vì WebSockets để tương thích tốt nhất với mạng 3G/4G trên Android.
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED // Cho phép cache không giới hạn (tốt cho lưu menu ảnh)
+  }),
+  experimentalForceLongPolling: true, 
+});
 
 // --- CẤU HÌNH CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = "deuqalvq5"; 
 const CLOUDINARY_UPLOAD_PRESET = "banhmi_preset"; 
 
-/**
- * Hàm upload file lên Cloudinary (Tối ưu hóa)
- */
 export const uploadFileToFirebase = async (file: File, folder: string = 'uploads'): Promise<string> => {
   if (!file) throw new Error("Chưa chọn file");
 
@@ -50,10 +57,7 @@ export const uploadFileToFirebase = async (file: File, folder: string = 'uploads
 
     if (!response.ok) {
       const errorData = await response.json();
-      const msg = errorData.error?.message || 'Upload failed';
-      if (msg.includes('preset')) throw new Error(`Lỗi Cấu hình: Chưa tạo Upload Preset '${CLOUDINARY_UPLOAD_PRESET}' (Unsigned) trên Cloudinary.`);
-      if (msg.includes('file size')) throw new Error("Lỗi: File quá lớn so với giới hạn của Cloudinary.");
-      throw new Error(`Lỗi Cloudinary: ${msg}`);
+      throw new Error(errorData.error?.message || 'Upload failed');
     }
 
     const data = await response.json();
@@ -63,9 +67,9 @@ export const uploadFileToFirebase = async (file: File, folder: string = 'uploads
     clearTimeout(timeoutId);
     console.error("Lỗi upload:", error);
     if (error.name === 'AbortError') {
-        alert("Kết nối quá chậm! Việc upload bị hủy sau 60 giây.");
+        alert("Mạng quá yếu, không thể tải ảnh lên.");
     } else {
-        alert(error.message || "Lỗi không xác định khi upload ảnh/video.");
+        alert("Lỗi upload ảnh: " + (error.message || "Không xác định"));
     }
     throw error;
   }

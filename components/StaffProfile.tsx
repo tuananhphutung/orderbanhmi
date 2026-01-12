@@ -1,6 +1,7 @@
+
 import React, { useState, useRef } from 'react';
 import { User, CheckInRecord, Shift } from '../types';
-import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload } from 'lucide-react';
+import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload, Camera } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, uploadFileToFirebase } from '../firebase';
 
@@ -16,7 +17,6 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const [errorMsg, setErrorMsg] = useState('');
   const [showCamera, setShowCamera] = useState(false);
   const [checkType, setCheckType] = useState<'in' | 'out'>('in');
-  const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'unknown'>('unknown');
   
   // Profile Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -29,73 +29,71 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  // 1. Improved Logic Check-in/Check-out Action
+  // --- LOGIC CHECK-IN MẠNH MẼ CHO ANDROID ---
   const handleActionClick = async (type: 'in' | 'out') => {
     setCheckType(type);
     setCheckingIn(true);
     setErrorMsg('');
 
     if (!navigator.geolocation) {
-       alert("Trình duyệt không hỗ trợ định vị. Đang chuyển sang camera...");
+       alert("Thiết bị không hỗ trợ GPS. Đang mở Camera...");
        openCamera();
        return;
     }
 
-    // Try to check permission state first if API is available
-    if (navigator.permissions && navigator.permissions.query) {
-        try {
-            const result = await navigator.permissions.query({ name: 'geolocation' });
-            if (result.state === 'denied') {
-                setPermissionStatus('denied');
-                setCheckingIn(false);
-                setErrorMsg("⚠️ Quyền vị trí đã bị chặn.\nHãy bấm vào biểu tượng ổ khóa 🔒 trên thanh địa chỉ -> Chọn 'Đặt lại quyền' (Reset permission) -> Tải lại trang.");
-                return;
-            }
-        } catch (e) {
-            // Ignore if query fails, proceed to request
-        }
-    }
+    // Cấu hình GPS: Ưu tiên chính xác cao, chờ tối đa 15s
+    const highAccuracyOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
+    // Cấu hình GPS dự phòng: Chấp nhận sai số, ưu tiên tốc độ (Wifi/4G)
+    const lowAccuracyOptions = { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 };
 
-    // Attempt to get position
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        // Success Geo
+    const handleSuccess = (position: GeolocationPosition) => {
         onCheckIn(position.coords.latitude, position.coords.longitude, type);
         setCheckingIn(false);
-        setPermissionStatus('granted');
-      },
-      (error) => {
-        // Error handling
-        setCheckingIn(false);
-        console.warn("Geo error:", error);
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+        console.warn("GPS Error 1:", error);
         
-        if (error.code === 1) { // PERMISSION_DENIED
-             setPermissionStatus('denied');
-             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-             if (isIOS) {
-                 alert("⚠️ iOS đã chặn quyền Vị trí.\n\nVui lòng vào: Cài đặt (Settings) -> Quyền riêng tư -> Dịch vụ định vị -> Safari -> Chọn 'Khi dùng ứng dụng'.");
-             } else {
-                 alert("⚠️ Bạn đã chặn quyền Vị trí.\n\nĐể sửa: Bấm vào biểu tượng ổ khóa 🔒 hoặc chữ 'i' trên thanh địa chỉ -> Bật Vị trí -> Tải lại trang.");
-             }
-             setErrorMsg("Vui lòng bật quyền Vị trí trong Cài đặt trình duyệt.");
+        // Nếu lỗi Timeout (3) hoặc Không khả dụng (2), thử lại với chế độ Low Accuracy
+        if (error.code === 3 || error.code === 2) {
+             console.log("Thử lại với GPS chế độ thấp...");
+             navigator.geolocation.getCurrentPosition(
+                 handleSuccess,
+                 (retryError) => {
+                     // Nếu vẫn lỗi -> Chuyển sang Camera
+                     console.warn("GPS Error 2:", retryError);
+                     setCheckingIn(false);
+                     const msg = "Không bắt được sóng GPS. Vui lòng CHỤP ẢNH check-in.";
+                     setErrorMsg(msg);
+                     if(confirm(msg)) {
+                         openCamera();
+                     }
+                 },
+                 lowAccuracyOptions
+             );
+        } 
+        // Nếu lỗi Quyền bị từ chối (1)
+        else if (error.code === 1) {
+            setCheckingIn(false);
+            setErrorMsg("⚠️ Ứng dụng chưa được cấp quyền Vị trí.\n\nHãy vào: Cài đặt -> Ứng dụng -> Order Bánh Mì -> Quyền -> Vị trí -> Cho phép.");
+            alert("Bạn cần cấp quyền Vị Trí để chấm công!\n\nNếu không bật được, hãy dùng Camera.");
         } else {
-             // POSITION_UNAVAILABLE or TIMEOUT
-             // Fallback to camera immediately
-             openCamera();
+            setCheckingIn(false);
+            openCamera(); // Lỗi khác -> Camera luôn
         }
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
+    };
+
+    // Bắt đầu lấy vị trí
+    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, highAccuracyOptions);
   };
 
-  // 2. Camera Logic
+  // --- LOGIC CAMERA ---
   const openCamera = async () => {
       setShowCamera(true);
       setCheckingIn(false); 
       setErrorMsg('');
 
       try {
-          // Explicitly request video
           const mediaStream = await navigator.mediaDevices.getUserMedia({ 
               video: { facingMode: 'user' }, 
               audio: false 
@@ -108,15 +106,10 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
       } catch (e: any) {
           console.error("Camera Error:", e);
           let msg = "Không thể mở camera.";
-          
           if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
-               msg = "⚠️ Lỗi: Bạn đã chặn quyền Camera.\n\nVui lòng vào Cài đặt -> Bật Camera cho trình duyệt.";
-               alert(msg);
-          } else if (e.name === 'NotFoundError') {
-               msg = "Không tìm thấy camera trên thiết bị.";
+               msg = "⚠️ Bạn đã chặn quyền Camera. Hãy vào Cài đặt để mở lại.";
           }
-
-          setErrorMsg(msg);
+          alert(msg);
           setShowCamera(false);
       }
   };
@@ -141,7 +134,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
               canvas.toBlob((blob) => {
                   if (blob) {
                       const file = new File([blob], `checkin_${Date.now()}.jpg`, { type: 'image/jpeg' });
-                      // Submit with dummy coordinates (0,0) as we use photo evidence
+                      // Gửi tọa độ 0,0 để server biết là checkin bằng ảnh
                       onCheckIn(0, 0, checkType, file);
                       closeCamera();
                   }
@@ -150,7 +143,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
       }
   };
 
-  // 3. Profile Logic
+  // --- PROFILE LOGIC ---
   const handleSaveProfile = async () => {
       setIsSavingProfile(true);
       try {
@@ -304,11 +297,10 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
 
           <div className="flex-1 flex flex-col items-center justify-center mb-6">
             {!isCheckedIn ? (
-              // Show CHECK IN Button
                <button
                   onClick={() => handleActionClick('in')}
                   disabled={checkingIn}
-                  className="group relative flex items-center justify-center w-40 h-40 bg-green-50 rounded-full border-4 border-green-100 transition-all hover:scale-105 active:scale-95 hover:border-green-200"
+                  className="group relative flex items-center justify-center w-40 h-40 bg-green-50 rounded-full border-4 border-green-100 transition-all hover:scale-105 active:scale-95 hover:border-green-200 shadow-xl"
                 >
                   <div className={`absolute inset-0 rounded-full bg-green-500 opacity-20 ${checkingIn ? 'animate-ping' : ''}`}></div>
                   <div className="z-10 flex flex-col items-center text-green-600">
@@ -317,15 +309,14 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
                     ) : (
                         <MapPinned size={40} className="mb-2 group-hover:-translate-y-1 transition-transform" />
                     )}
-                    <span className="font-bold">{checkingIn ? 'Đang lấy VT...' : 'CHECK IN'}</span>
+                    <span className="font-bold">{checkingIn ? 'Đang định vị...' : 'CHECK IN'}</span>
                   </div>
                 </button>
             ) : (
-                // Show CHECK OUT Button
                  <button
                   onClick={() => handleActionClick('out')}
                   disabled={checkingIn}
-                  className="group relative flex items-center justify-center w-40 h-40 bg-red-50 rounded-full border-4 border-red-100 transition-all hover:scale-105 active:scale-95 hover:border-red-200"
+                  className="group relative flex items-center justify-center w-40 h-40 bg-red-50 rounded-full border-4 border-red-100 transition-all hover:scale-105 active:scale-95 hover:border-red-200 shadow-xl"
                 >
                   <div className={`absolute inset-0 rounded-full bg-red-500 opacity-20 ${checkingIn ? 'animate-ping' : ''}`}></div>
                   <div className="z-10 flex flex-col items-center text-red-600">
@@ -334,7 +325,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
                     ) : (
                         <LogOut size={40} className="mb-2 group-hover:-translate-y-1 transition-transform" />
                     )}
-                    <span className="font-bold">{checkingIn ? 'Đang xử lý...' : 'CHECK OUT'}</span>
+                    <span className="font-bold">{checkingIn ? 'Đang gửi...' : 'CHECK OUT'}</span>
                   </div>
                 </button>
             )}
@@ -343,24 +334,15 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
                 {isCheckedIn ? 'Bạn đang trong ca làm việc.' : 'Hãy check-in khi bắt đầu ca.'}
             </p>
             {errorMsg && (
-                <div className="mt-3 bg-red-50 p-3 rounded-lg flex flex-col items-center text-center">
-                    <p className="text-red-500 text-sm font-medium whitespace-pre-line">{errorMsg}</p>
-                    {permissionStatus === 'denied' && (
-                        <p className="text-xs text-red-400 mt-2">
-                            (Mẹo: Mở trong Tab mới hoặc Reset cài đặt trang web)
-                        </p>
-                    )}
+                <div className="mt-3 bg-red-50 p-3 rounded-lg flex flex-col items-center text-center animate-in fade-in">
+                    <p className="text-red-500 text-sm font-bold mb-2">{errorMsg}</p>
+                    <button 
+                        onClick={() => openCamera()}
+                        className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-red-600"
+                    >
+                        <Camera size={16} /> Chụp ảnh báo cáo
+                    </button>
                 </div>
-            )}
-            
-            {/* Manual Retry Button for Glitchy Browsers */}
-            {!checkingIn && errorMsg && (
-                 <button 
-                    onClick={() => openCamera()}
-                    className="mt-2 text-sm text-blue-600 font-bold underline hover:text-blue-800"
-                 >
-                    Dùng Camera chụp ảnh thay thế
-                 </button>
             )}
 
           </div>
@@ -389,7 +371,7 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
 
       {/* CAMERA MODAL */}
       {showCamera && (
-          <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in duration-300">
               <div className="relative flex-1 bg-black flex items-center justify-center">
                   <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                   <canvas ref={canvasRef} className="hidden" />
@@ -402,9 +384,9 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
                       </button>
                   </div>
                   <div className="absolute top-10 left-0 right-0 text-center px-4 pointer-events-none">
-                      <p className="text-white bg-red-600/80 px-4 py-2 rounded-full inline-block font-bold shadow-lg text-sm">
-                         ⚠️ Không lấy được vị trí. Vui lòng chụp ảnh tại quán!
-                      </p>
+                      <div className="bg-red-600/90 text-white px-4 py-2 rounded-xl inline-block font-bold shadow-lg text-sm backdrop-blur">
+                         ⚠️ Không có GPS. Vui lòng chụp ảnh khuôn mặt tại quán!
+                      </div>
                   </div>
               </div>
           </div>

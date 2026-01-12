@@ -6,11 +6,12 @@ const config: CapacitorConfig = {
   appName: 'Bánh Mì Hội An POS',
   webDir: 'dist',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    cleartext: true
   },
   plugins: {
     CapacitorHttp: {
-      enabled: true,
+      enabled: false,
     },
   },
 };
