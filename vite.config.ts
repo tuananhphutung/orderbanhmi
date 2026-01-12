@@ -7,13 +7,14 @@ export default defineConfig({
   plugins: [
     react()
   ],
-  base: './',
+  base: './', // Quan trọng cho file path trong môi trường mobile
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    emptyOutDir: true,
   },
   server: {
     port: 3000,
-    host: true, // Cho phép kết nối từ mạng LAN
+    host: true, 
   }
 })
