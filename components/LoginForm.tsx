@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LoginFormData } from '../types';
-import { User, Lock, Phone, ShieldCheck, Download, Bug } from 'lucide-react';
+import { User, Lock, Phone, ShieldCheck } from 'lucide-react';
 
 interface LoginFormProps {
   onSubmit: (data: LoginFormData) => void;
@@ -31,25 +31,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstallClick = async () => {
-      if (deferredPrompt) {
-          deferredPrompt.prompt();
-          const { outcome } = await deferredPrompt.userChoice;
-          if (outcome === 'accepted') setDeferredPrompt(null);
-      } else {
-          // Detect iOS
-          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-          if (isIOS) {
-              alert("Để cài đặt trên iPhone/iPad:\n1. Nhấn nút Chia sẻ (Share) ở giữa đáy màn hình\n2. Chọn 'Thêm vào màn hình chính' (Add to Home Screen)");
-          } else {
-              alert("Vui lòng sử dụng menu trình duyệt -> Thêm vào màn hình chính (Install App)");
-          }
-      }
-  };
-
   const handleReportError = () => {
     const info = `UserAgent: ${navigator.userAgent}\nScreen: ${window.innerWidth}x${window.innerHeight}\nTime: ${new Date().toLocaleString()}`;
-    alert(`Thông tin thiết bị:\n\n${info}\n\nVui lòng chụp màn hình này gửi cho kỹ thuật viên nếu gặp lỗi.`);
+    alert(`Thông tin hỗ trợ kỹ thuật:\n\n${info}\n\nVui lòng liên hệ quản trị viên để được cấp tài khoản.`);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -74,19 +58,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSubmit, onRegister }) => {
        {/* Main Card */}
        <div className="bg-white w-full max-w-[400px] rounded-3xl shadow-2xl relative overflow-hidden border border-gray-100">
           
-          {/* Top Buttons */}
-          <div className="absolute top-4 right-4 z-20 flex gap-2">
-            <button 
-                onClick={handleInstallClick}
-                className="flex items-center gap-1.5 bg-white/90 hover:bg-orange-50 text-gray-600 hover:text-orange-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm border border-gray-200 backdrop-blur-sm active:scale-95"
-            >
-                <Download size={12} /> Cài App
-            </button>
+          {/* Top Button - Single Text Button */}
+          <div className="absolute top-4 right-4 z-20">
             <button 
                 onClick={handleReportError}
-                className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all shadow-sm border border-red-100 backdrop-blur-sm active:scale-95"
+                className="text-[11px] font-bold text-white/90 hover:text-white border border-white/30 bg-white/10 hover:bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-full transition-all tracking-wide"
             >
-                <Bug size={12} /> Lỗi
+                HỖ TRỢ
             </button>
           </div>
 

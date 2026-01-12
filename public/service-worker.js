@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'banhmi-pos-v14-robust';
+const CACHE_NAME = 'banhmi-pos-v15-fixed-bundle';
 const urlsToCache = [
   './',
   'index.html',
@@ -40,57 +40,37 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // Navigation requests (HTML)
-  // Strategy: Network First -> Cache -> /index.html
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-            // Check if we received a valid response
             if (!response || response.status !== 200 || response.type !== 'basic') {
                 return caches.match('index.html').then(cached => cached || response);
             }
-            // Update cache with new version
             const responseToCache = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
                 cache.put(event.request, responseToCache);
-                // Also update index.html key explicitly just in case
-                cache.put('index.html', responseToCache.clone());
             });
             return response;
         })
         .catch(() => {
-          // If network fails, try to serve from cache
-          // Try exact match, then index.html, then ./
-          return caches.match(event.request)
-            .then(response => response || caches.match('index.html'))
+          return caches.match('index.html')
             .then(response => response || caches.match('./'));
         })
     );
     return;
   }
 
-  // Asset requests (JS, CSS, Images)
-  // Strategy: Cache First -> Network -> Cache Update
+  // Asset requests
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Return cached response immediately if found
       if (cachedResponse) {
-        // Optional: Update cache in background (Stale-while-revalidate logic could go here)
         return cachedResponse;
       }
-
-      // If not in cache, fetch from network
       return fetch(event.request).then((networkResponse) => {
-        // Cache valid responses
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
         return networkResponse;
       }).catch(() => {
-         // Network failed and no cache - nothing we can do for assets
+         // Network failed
       });
     })
   );
