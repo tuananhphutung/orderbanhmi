@@ -1,5 +1,6 @@
 
-const CACHE_NAME = 'banhmi-pos-v15-fixed-bundle';
+const CACHE_NAME = 'banhmi-pos-v16-dynamic';
+// Only cache the shell immediately. Assets are cached on runtime.
 const urlsToCache = [
   './',
   'index.html',
@@ -10,12 +11,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // Use loose caching - if one fails, don't crash the whole install
-      return Promise.all(
-        urlsToCache.map(url => 
-          cache.add(url).catch(err => console.warn('Failed to cache:', url))
-        )
-      );
+      return cache.addAll(urlsToCache);
     })
   );
 });
@@ -28,7 +24,6 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== CACHE_NAME) {
-              console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
@@ -39,19 +34,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Navigation requests (HTML)
-  if (event.request.mode === 'navigate') {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // 1. Navigation (HTML): Network First -> Cache Fallback
+  // This ensures we always get the latest index.html which points to new hashed JS files
+  if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-                return caches.match('index.html').then(cached => cached || response);
-            }
-            const responseToCache = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseToCache);
-            });
-            return response;
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseClone);
+          });
+          return response;
         })
         .catch(() => {
           return caches.match('index.html')
@@ -61,17 +57,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Asset requests
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        return networkResponse;
-      }).catch(() => {
-         // Network failed
-      });
-    })
-  );
+  // 2. Static Assets (JS, CSS, Images in /assets/): Cache First -> Network -> Cache
+  // Vite generates hashed filenames (e.g., index-123abcde.js), so they are safe to cache aggressively.
+  if (url.pathname.includes('/assets/') || request.destination === 'script' || request.destination === 'style' || request.destination === 'image') {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return networkResponse;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. Default: Network Only (API calls, etc.)
+  return; 
 });
