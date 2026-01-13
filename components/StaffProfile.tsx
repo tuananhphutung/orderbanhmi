@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, CheckInRecord, Shift } from '../types';
 import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload, Camera, Eye, EyeOff } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -30,6 +30,21 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
+  // --- AUTO REQUEST LOCATION PERMISSION (WARM UP) ---
+  useEffect(() => {
+    // Ngay khi component Profile được mount, thử lấy vị trí ngay.
+    // Điều này giúp trình duyệt hiện popup xin quyền ngay lập tức nếu chưa có,
+    // hoặc "làm nóng" GPS để lần check-in sau nhanh hơn.
+    if (navigator.geolocation) {
+        // Chỉ gọi, không cần xử lý kết quả ngay, mục đích là trigger Permission Dialog
+        navigator.geolocation.getCurrentPosition(
+            (pos) => console.log("GPS Warm-up OK:", pos.coords.latitude), 
+            (err) => console.log("GPS Warm-up Check:", err.message),
+            { timeout: 5000, enableHighAccuracy: true, maximumAge: 0 }
+        );
+    }
+  }, []);
+
   // --- LOGIC CHECK-IN BẮT BUỘC GPS CHÍNH XÁC CAO ---
   const handleActionClick = async (type: 'in' | 'out') => {
     setCheckType(type);
@@ -55,8 +70,6 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
 
         if (accuracy > 100) {
              // Nếu sai số > 100m (thường do dùng Wifi/4G thay vì GPS), cảnh báo nhưng vẫn cho phép (có thể log lại)
-             // Hoặc chặn nếu muốn cực kỳ nghiêm ngặt. Ở đây cảnh báo nhẹ.
-             // alert(`Độ chính xác GPS thấp (${Math.round(accuracy)}m). Vui lòng đứng ở nơi thoáng hơn.`);
         }
 
         onCheckIn(position.coords.latitude, position.coords.longitude, type);

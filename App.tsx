@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import LoginForm from './components/LoginForm';
 import MainLayout from './components/MainLayout';
@@ -29,7 +30,7 @@ const App: React.FC = () => {
   const [pendingTotal, setPendingTotal] = useState(0);
   const [pendingOrderInfo, setPendingOrderInfo] = useState<{source: OrderSource, name: string, phone: string} | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(true); // Default loading to true for auto-login check
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'permission-denied'>('connecting');
   const [showConnectionStatus, setShowConnectionStatus] = useState(true);
 
@@ -104,7 +105,7 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Realtime Listeners
+  // 2. Realtime Listeners & Auto Login Logic
   useEffect(() => {
     const handleError = (error: any) => {
         console.error("Firebase connection error:", error);
@@ -113,25 +114,58 @@ const App: React.FC = () => {
         } else {
             setConnectionStatus('error');
         }
+        setIsLoggingIn(false);
     };
 
-    // Users Listener
+    // Users Listener - Handles Data Sync AND Auto Login
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
         setConnectionStatus('connected');
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         setUsers(items);
         
-        if (currentUser && currentUser.id !== 'offline_admin') {
-            const updatedMe = items.find(u => u.id === currentUser.id);
-            if (updatedMe) {
-                 if (updatedMe.status === 'locked') {
-                     alert("Tài khoản của bạn đã bị khóa.");
-                     handleLogout();
-                 } else {
-                     setCurrentUser(updatedMe); 
-                 }
+        // AUTO LOGIN LOGIC
+        // Check local storage for saved session
+        const savedUserId = localStorage.getItem('bm_saved_user_id');
+        
+        if (currentUser) {
+            // Update current user info if changed in DB (e.g. locked status)
+            if (currentUser.id !== 'offline_admin') {
+                const updatedMe = items.find(u => u.id === currentUser.id);
+                if (updatedMe) {
+                     if (updatedMe.status === 'locked') {
+                         alert("Tài khoản của bạn đã bị khóa.");
+                         handleLogout();
+                     } else {
+                         setCurrentUser(updatedMe); 
+                     }
+                }
+            }
+        } else if (savedUserId) {
+            // Attempt to auto-login from local storage
+            if (savedUserId === 'offline_admin') {
+                 setCurrentUser({
+                    id: 'offline_admin',
+                    name: 'Administrator',
+                    username: 'admin',
+                    password: '123456',
+                    role: 'admin',
+                    status: 'active',
+                    isOnline: true
+                });
+            } else {
+                const foundUser = items.find(u => u.id === savedUserId);
+                if (foundUser) {
+                    if (foundUser.status === 'active') {
+                        setCurrentUser(foundUser);
+                        updateDoc(doc(db, 'users', foundUser.id), { isOnline: true }).catch(() => {});
+                    } else {
+                        localStorage.removeItem('bm_saved_user_id'); // Clear invalid session
+                    }
+                }
             }
         }
+        
+        setIsLoggingIn(false); // Done checking
     }, handleError);
 
     // Menu Listener
@@ -208,15 +242,17 @@ const App: React.FC = () => {
 
     // Offline Admin Backdoor
     if (cleanUsername === 'admin' && cleanPassword === '123456') {
-        setCurrentUser({
+        const adminUser = {
             id: 'offline_admin',
             name: 'Administrator',
             username: 'admin',
             password: '123456',
-            role: 'admin',
-            status: 'active',
+            role: 'admin' as const,
+            status: 'active' as const,
             isOnline: true
-        });
+        };
+        setCurrentUser(adminUser);
+        localStorage.setItem('bm_saved_user_id', 'offline_admin'); // SAVE SESSION
         setIsLoggingIn(false);
         return; 
     }
@@ -257,8 +293,10 @@ const App: React.FC = () => {
                     return;
                 }
             }
+            // SUCCESS LOGIN
             updateDoc(doc(db, 'users', user.id), { isOnline: true }).catch(() => {});
             setCurrentUser({ ...user, isOnline: true });
+            localStorage.setItem('bm_saved_user_id', user.id); // SAVE SESSION
         } else {
             alert('Sai thông tin đăng nhập!');
         }
@@ -294,6 +332,7 @@ const App: React.FC = () => {
     const userId = currentUser?.id;
     const isOfflineAdmin = userId === 'offline_admin';
 
+    localStorage.removeItem('bm_saved_user_id'); // CLEAR SESSION
     setCurrentUser(null);
     setCart([]);
     setShowPaymentModal(false);
@@ -440,19 +479,22 @@ const App: React.FC = () => {
       )}
 
       {isLoggingIn && (
-          <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center">
-              <div className="bg-white p-4 rounded-xl flex items-center gap-3">
+          <div className="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center">
+              <div className="w-16 h-16 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg mb-4 animate-bounce">
+                 <span className="text-2xl font-black text-white">BM</span>
+              </div>
+              <div className="flex items-center gap-3">
                   <Loader2 className="animate-spin text-orange-500" />
-                  <span className="font-medium">Đang xử lý...</span>
+                  <span className="font-medium text-gray-500">Đang đăng nhập tự động...</span>
               </div>
           </div>
       )}
 
-      {!currentUser ? (
+      {!currentUser && !isLoggingIn ? (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative font-sans">
           <LoginForm onSubmit={handleLogin} onRegister={handleRegister} />
         </div>
-      ) : (
+      ) : currentUser && !isLoggingIn ? (
         currentUser.role === 'admin' ? (
             <AdminLayout 
                 onLogout={handleLogout}
@@ -487,7 +529,7 @@ const App: React.FC = () => {
             )}
             </>
         )
-      )}
+      ) : null}
     </>
   );
 };

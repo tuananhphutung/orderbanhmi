@@ -70,7 +70,8 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('service-worker.js')
+          // Sử dụng đường dẫn tương đối ./ để tránh lỗi path khi deploy vào thư mục con
+          navigator.serviceWorker.register('./service-worker.js')
             .then(reg => console.log('SW Registered'))
             .catch(err => console.log('SW Error:', err));
         });
