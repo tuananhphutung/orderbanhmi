@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, CalendarClock, Package, LogOut, Menu, X, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarClock, Package, LogOut, BarChart2, Menu } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StaffManager from './StaffManager';
 import ShiftManager from './ShiftManager';
@@ -26,74 +27,71 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     checkIns, onNotify 
 }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'revenue' | 'staff' | 'shifts' | 'inventory'>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  const NavItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
+    <button 
+        onClick={() => setActiveTab(id)}
+        className={`flex flex-col items-center justify-center w-full py-2 transition-colors duration-200 ${
+            activeTab === id 
+            ? 'text-orange-600' 
+            : 'text-gray-400 hover:text-gray-600'
+        }`}
+    >
+        <div className={`p-1 rounded-xl transition-all ${activeTab === id ? 'bg-orange-50 transform -translate-y-1' : ''}`}>
+            <Icon size={24} strokeWidth={activeTab === id ? 2.5 : 2} />
+        </div>
+        <span className={`text-[10px] font-bold mt-1 ${activeTab === id ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+    </button>
+  );
 
   return (
-    <div className="flex h-screen bg-gray-100 relative overflow-hidden">
+    <div className="flex h-screen bg-gray-100 relative overflow-hidden flex-col md:flex-row">
       
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-gray-900 text-white z-40 flex items-center justify-between px-4 shadow-md">
+      {/* --- MOBILE HEADER (Top Bar) --- */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-4 shadow-sm">
           <div className="flex items-center gap-2">
-              <button onClick={toggleSidebar} className="p-2 -ml-2">
-                  <Menu size={24} />
-              </button>
-              <span className="font-bold text-lg">BM Hội An Admin</span>
+              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white font-black text-xs">BM</div>
+              <span className="font-bold text-gray-800">Quản Trị Viên</span>
           </div>
-          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center font-bold text-xs">
-              AD
-          </div>
+          <button onClick={onLogout} className="p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-red-50 hover:text-red-500">
+              <LogOut size={18} />
+          </button>
       </div>
 
-      {/* Overlay for Mobile */}
-      {isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={closeSidebar}
-          ></div>
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed md:relative z-50 w-64 h-full bg-gray-900 text-white flex flex-col shadow-xl transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-          <div>
-              <h1 className="text-xl font-bold text-orange-500">Bánh Mì Hội An</h1>
-              <p className="text-gray-400 text-xs mt-1">Administrator Control</p>
-          </div>
-          <button onClick={closeSidebar} className="md:hidden text-gray-400">
-              <X size={24} />
-          </button>
+      {/* --- DESKTOP SIDEBAR (Hidden on Mobile) --- */}
+      <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-xl">
+        <div className="p-6 border-b border-gray-800">
+          <h1 className="text-xl font-bold text-orange-500">Bánh Mì Hội An</h1>
+          <p className="text-gray-400 text-xs mt-1">Administrator Control</p>
         </div>
         
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           <button 
-            onClick={() => { setActiveTab('dashboard'); closeSidebar(); }}
+            onClick={() => setActiveTab('dashboard')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <LayoutDashboard size={20} /> Tổng quan
           </button>
            <button 
-            onClick={() => { setActiveTab('revenue'); closeSidebar(); }}
+            onClick={() => setActiveTab('revenue')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'revenue' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <BarChart2 size={20} /> Báo cáo doanh thu
           </button>
           <button 
-            onClick={() => { setActiveTab('staff'); closeSidebar(); }}
+            onClick={() => setActiveTab('staff')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'staff' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <Users size={20} /> Nhân viên
           </button>
            <button 
-            onClick={() => { setActiveTab('shifts'); closeSidebar(); }}
+            onClick={() => setActiveTab('shifts')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'shifts' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
-            <CalendarClock size={20} /> Phân ca & Check-in
+            <CalendarClock size={20} /> Ca trực & Chấm công
           </button>
           <button 
-            onClick={() => { setActiveTab('inventory'); closeSidebar(); }}
+            onClick={() => setActiveTab('inventory')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'inventory' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
           >
             <Package size={20} /> Quản lý kho
@@ -110,14 +108,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-auto bg-gray-100 pt-16 md:pt-0">
+      {/* --- MAIN CONTENT --- */}
+      <div className="flex-1 overflow-auto bg-gray-100 pt-14 pb-20 md:pt-0 md:pb-0 h-full">
         {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} shifts={shifts} />}
         {activeTab === 'revenue' && <RevenueReport orders={orders} />}
         {activeTab === 'staff' && <StaffManager users={users} setUsers={setUsers} />}
         {activeTab === 'shifts' && <ShiftManager users={users} shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={onNotify} />}
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
       </div>
+
+      {/* --- MOBILE BOTTOM NAVIGATION (App Style) --- */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex justify-between px-1 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+          <NavItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
+          <NavItem id="revenue" icon={BarChart2} label="Doanh thu" />
+          <NavItem id="inventory" icon={Package} label="Kho" />
+          <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
+          <NavItem id="staff" icon={Users} label="Nhân viên" />
+      </div>
+
     </div>
   );
 };

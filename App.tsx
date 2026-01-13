@@ -50,6 +50,24 @@ const App: React.FC = () => {
     }
   };
 
+  // --- FORCE LOCATION REQUEST ON APP START ---
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+        // Gọi hàm này ngay lập tức để trình duyệt hiện popup xin quyền
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                console.log("Quyền vị trí đã được cấp:", position.coords);
+            },
+            (error) => {
+                console.warn("Chưa cấp quyền vị trí hoặc lỗi:", error.message);
+                // Không alert ở đây để tránh làm phiền nếu user chưa muốn, 
+                // nhưng popup của hệ điều hành sẽ hiện lên.
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+  }, []);
+
   // --- INITIALIZATION & SYNC ---
 
   // 1. Create Default Admin & Heartbeat
