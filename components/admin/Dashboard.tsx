@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Order, Shift } from '../../types';
-import { DollarSign, ShoppingBag, Calendar, Trophy, Utensils, UserCheck, TrendingUp, Clock, Sparkles, Send, Loader2, MessageSquare, Trash2 } from 'lucide-react';
+import { DollarSign, ShoppingBag, Calendar, Trophy, Utensils, UserCheck, TrendingUp, Clock, Sparkles, Send, Loader2, MessageSquare, Trash2, Key } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { db } from '../../firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
@@ -19,14 +19,46 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  // Kiểm tra sự tồn tại của API KEY an toàn cho môi trường trình duyệt
+  useEffect(() => {
+    const checkKey = async () => {
+      // Sử dụng cách kiểm tra an toàn tránh ReferenceError: process
+      const isProcessDefined = typeof (globalThis as any).process !== 'undefined';
+      const keyInEnv = isProcessDefined ? (globalThis as any).process.env?.API_KEY : null;
+      
+      if (keyInEnv) {
+        setHasApiKey(true);
+      } else if ((window as any).aistudio?.hasSelectedApiKey) {
+        const selected = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(selected);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if ((window as any).aistudio?.openSelectKey) {
+      await (window as any).aistudio.openSelectKey();
+      // Giả định thành công theo tài liệu hướng dẫn
+      setHasApiKey(true);
+      setAiResponse("Đã kết nối AI! Bạn có thể đặt câu hỏi ngay bây giờ.");
+    } else {
+      alert("Trình duyệt không hỗ trợ hộp thoại chọn khóa AI. Vui lòng đảm bảo bạn đang sử dụng môi trường hỗ trợ.");
+    }
+  };
 
   const handleAIAnalyze = async () => {
     if (!aiQuery.trim()) return;
     
-    // SỬA LỖI: Kiểm tra process có tồn tại hay không trước khi chạy AI
-    if (typeof process === 'undefined' || !process.env || !process.env.API_KEY) {
-        console.error("Môi trường chưa cung cấp API_KEY");
-        setAiResponse("Lỗi hệ thống: Không tìm thấy khóa AI (process is undefined). Hãy kiểm tra môi trường chạy.");
+    // Lấy API Key an toàn
+    const isProcessDefined = typeof (globalThis as any).process !== 'undefined';
+    const apiKey = isProcessDefined ? (globalThis as any).process.env?.API_KEY : null;
+
+    if (!apiKey) {
+        setAiResponse("Lỗi: Chưa tìm thấy khóa AI. Vui lòng nhấn biểu tượng chìa khóa để kết nối.");
+        setHasApiKey(false);
         return;
     }
 
@@ -46,7 +78,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
             recent_orders: simplifiedOrders
         };
 
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const ai = new GoogleGenAI({ apiKey });
         
         const prompt = `
             Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An.
@@ -65,7 +97,13 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
 
     } catch (error: any) {
         console.error("AI Error:", error);
-        setAiResponse(`Lỗi phân tích: ${error.message}`);
+        // Nếu khóa hết hạn hoặc sai, yêu cầu chọn lại
+        if (error.message?.includes("entity was not found") || error.message?.includes("API_KEY") || error.message?.includes("key")) {
+            setHasApiKey(false);
+            setAiResponse("Khóa AI không hợp lệ hoặc đã hết hạn. Vui lòng nhấn biểu tượng chìa khóa để chọn lại khóa trả phí.");
+        } else {
+            setAiResponse(`Lỗi phân tích: ${error.message}`);
+        }
     } finally {
         setIsAnalyzing(false);
     }
@@ -112,9 +150,20 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
       {/* AI ASSISTANT */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
         <div className="relative z-10">
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
-                <Sparkles className="text-yellow-300" /> Trợ lý AI Báo Cáo
-            </h3>
+            <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Sparkles className="text-yellow-300" /> Trợ lý AI Báo Cáo
+                </h3>
+                {!hasApiKey && (
+                    <button 
+                        onClick={handleOpenKeySelector}
+                        className="flex items-center gap-1.5 bg-yellow-400 text-indigo-900 px-3 py-1.5 rounded-full text-xs font-black shadow-lg hover:bg-yellow-300 transition-all animate-pulse"
+                    >
+                        <Key size={14} /> KẾT NỐI GEMINI
+                    </button>
+                )}
+            </div>
+            
             <p className="text-indigo-100 text-sm mb-4">Phân tích doanh thu và xu hướng bán hàng tự động.</p>
             
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 flex items-center border border-white/20">
@@ -123,15 +172,16 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
-                    placeholder="Hỏi AI: Doanh thu hôm nay thế nào?"
+                    placeholder={hasApiKey ? "Hỏi AI: Doanh thu hôm nay thế nào?" : "Vui lòng kết nối AI trước..."}
                     className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
+                    disabled={!hasApiKey && isAnalyzing}
                 />
                 <button 
-                    onClick={handleAIAnalyze}
-                    disabled={isAnalyzing || !aiQuery.trim()}
-                    className="p-2 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors"
+                    onClick={hasApiKey ? handleAIAnalyze : handleOpenKeySelector}
+                    disabled={isAnalyzing || (hasApiKey && !aiQuery.trim())}
+                    className={`p-2 rounded-xl transition-all ${hasApiKey ? 'bg-white text-indigo-600 hover:bg-indigo-50' : 'bg-yellow-400 text-indigo-900 animate-bounce'}`}
                 >
-                    {isAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                    {isAnalyzing ? <Loader2 size={20} className="animate-spin" /> : hasApiKey ? <Send size={20} /> : <Key size={20} />}
                 </button>
             </div>
 
@@ -142,6 +192,11 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
                     </div>
                 </div>
             )}
+            
+            <div className="mt-4 flex items-center gap-4 text-[10px] text-indigo-200">
+                <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${hasApiKey ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.5)]' : 'bg-red-400'}`}></div> {hasApiKey ? 'AI Sẵn sàng' : 'Chưa kết nối'}</span>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="underline opacity-60 hover:opacity-100">Tìm hiểu về phí API</a>
+            </div>
         </div>
       </div>
 

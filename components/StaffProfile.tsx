@@ -30,21 +30,6 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
-  // --- AUTO REQUEST LOCATION PERMISSION (WARM UP) ---
-  useEffect(() => {
-    // Ngay khi component Profile được mount, thử lấy vị trí ngay.
-    // Điều này giúp trình duyệt hiện popup xin quyền ngay lập tức nếu chưa có,
-    // hoặc "làm nóng" GPS để lần check-in sau nhanh hơn.
-    if (navigator.geolocation) {
-        // Chỉ gọi, không cần xử lý kết quả ngay, mục đích là trigger Permission Dialog
-        navigator.geolocation.getCurrentPosition(
-            (pos) => console.log("GPS Warm-up OK:", pos.coords.latitude), 
-            (err) => console.log("GPS Warm-up Check:", err.message),
-            { timeout: 5000, enableHighAccuracy: true, maximumAge: 0 }
-        );
-    }
-  }, []);
-
   // --- LOGIC CHECK-IN BẮT BUỘC GPS CHÍNH XÁC CAO ---
   const handleActionClick = async (type: 'in' | 'out') => {
     setCheckType(type);
@@ -59,19 +44,11 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
 
     // Cấu hình GPS: 
     // - enableHighAccuracy: true (Bắt buộc dùng chip GPS để lấy tọa độ chính xác nhất)
-    // - timeout: 20000 (Cho thiết bị 20s để bắt sóng vệ tinh, tránh timeout quá sớm)
-    // - maximumAge: 0 (Không dùng vị trí cache cũ, bắt buộc lấy mới)
+    // - timeout: 20000 (Cho thiết bị 20s để bắt sóng vệ tinh)
+    // - maximumAge: 0 (Không dùng vị trí cache cũ)
     const highAccuracyOptions = { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 };
 
     const handleSuccess = (position: GeolocationPosition) => {
-        // Kiểm tra độ chính xác (Accuracy)
-        const accuracy = position.coords.accuracy;
-        console.log("Độ chính xác GPS:", accuracy, "mét");
-
-        if (accuracy > 100) {
-             // Nếu sai số > 100m (thường do dùng Wifi/4G thay vì GPS), cảnh báo nhưng vẫn cho phép (có thể log lại)
-        }
-
         onCheckIn(position.coords.latitude, position.coords.longitude, type);
         setCheckingIn(false);
     };
@@ -86,18 +63,15 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
             setErrorMsg(msg);
             alert(msg);
         } 
-        else if (error.code === error.POSITION_UNAVAILABLE) { // Code 2: Thường do TẮT GPS (Location Services)
+        else if (error.code === error.POSITION_UNAVAILABLE) { // Code 2: Thường do TẮT GPS
              const msg = "⛔ BẠN CHƯA BẬT ĐỊNH VỊ (GPS) TRÊN ĐIỆN THOẠI.\n\nVui lòng vuốt thanh thông báo xuống và BẬT VỊ TRÍ, sau đó thử lại.";
              setErrorMsg(msg);
              alert(msg);
-             // Không cho phép dùng Camera fallback ngay lập tức ở đây, bắt buộc bật GPS.
         } 
         else if (error.code === error.TIMEOUT) { // Code 3
-             // Timeout: Có thể do GPS yếu hoặc đang ở trong nhà kín
              const msg = "📡 Sóng GPS quá yếu hoặc bị che khuất.\n\nVui lòng di chuyển ra nơi thoáng hơn và thử lại.";
              setErrorMsg(msg);
              
-             // Chỉ cho phép camera khi đã cố gắng bật GPS nhưng sóng yếu
              if(confirm(`${msg}\n\nBạn có muốn chuyển sang chụp ảnh chấm công không?`)) {
                  openCamera();
              }
@@ -157,7 +131,6 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
               canvas.toBlob((blob) => {
                   if (blob) {
                       const file = new File([blob], `checkin_${Date.now()}.jpg`, { type: 'image/jpeg' });
-                      // Gửi tọa độ 0,0 để server biết là checkin bằng ảnh
                       onCheckIn(0, 0, checkType, file);
                       closeCamera();
                   }
@@ -367,7 +340,6 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
             {errorMsg && (
                 <div className="mt-3 bg-red-50 p-3 rounded-lg flex flex-col items-center text-center animate-in fade-in">
                     <p className="text-red-500 text-sm font-bold mb-2 whitespace-pre-line">{errorMsg}</p>
-                    {/* Chỉ hiển thị nút Camera nếu lỗi không phải do Tắt GPS (Code 2) */}
                     {!errorMsg.includes("CHƯA BẬT ĐỊNH VỊ") && (
                          <button 
                             onClick={() => openCamera()}
