@@ -4,13 +4,8 @@ import { User, Order, Shift } from '../../types';
 import { TrendingUp, Clock, Sparkles, Send, Loader2, Trash2 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { db } from '../../firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 
-/**
- * SHIM CHO BIẾN MÔI TRƯỜNG
- * Giải quyết lỗi "process is not defined" trong môi trường trình duyệt.
- * Tích hợp mã API người dùng cung cấp cho mục đích chạy nội bộ.
- */
 if (typeof (globalThis as any).process === 'undefined') {
   (globalThis as any).process = {
     env: {
@@ -20,12 +15,13 @@ if (typeof (globalThis as any).process === 'undefined') {
 }
 
 interface DashboardProps {
+  adminUser: User;
   users: User[];
   orders: Order[];
   shifts: Shift[]; 
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
+const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts }) => {
   const [startDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [endDate] = useState(new Date().toLocaleDateString('en-CA'));
 
@@ -35,46 +31,21 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
 
   const handleAIAnalyze = async () => {
     if (!aiQuery.trim()) return;
-    
     setIsAnalyzing(true);
     setAiResponse('');
-
     try {
-        // Lấy dữ liệu 30 đơn hàng gần nhất làm ngữ cảnh
         const simplifiedOrders = orders.slice(0, 30).map(o => ({
             id: o.id.slice(-4),
             date: new Date(o.timestamp).toLocaleDateString('vi-VN'),
             total: o.total,
             items: o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
         }));
-
-        const contextData = {
-            shop: "Bánh Mì Hội An",
-            recent_orders: simplifiedOrders
-        };
-
-        /**
-         * KHỞI TẠO GEMINI AI
-         * Sử dụng process.env.API_KEY từ shim đã được định nghĩa ở trên.
-         */
+        const contextData = { shop: "Bánh Mì Hội An", recent_orders: simplifiedOrders };
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-        
-        const prompt = `
-            Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An.
-            Dữ liệu: ${JSON.stringify(contextData)}
-            Câu hỏi: "${aiQuery}"
-            Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. TUYỆT ĐỐI KHÔNG dùng ký tự "**" để in đậm. Dùng dấu gạch đầu dòng để liệt kê thông tin quan trọng.
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: prompt,
-        });
-
+        const prompt = `Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An. Dữ liệu: ${JSON.stringify(contextData)} Câu hỏi: "${aiQuery}" Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. TUYỆT ĐỐI KHÔNG dùng ký tự "**" để in đậm. Dùng dấu gạch đầu dòng để liệt kê thông tin quan trọng.`;
+        const response = await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: prompt });
         const rawText = response.text || "AI không trả về kết quả.";
-        // Loại bỏ ký tự ** gây nhiễu giao diện text thô
         setAiResponse(rawText.replaceAll('**', ''));
-
     } catch (error: any) {
         console.error("AI Error:", error);
         setAiResponse(`Lỗi phân tích: ${error.message}`);
@@ -83,12 +54,23 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
     }
   };
 
-  const handleDeleteOrder = async (orderId: string) => {
-    if (confirm('Xóa đơn hàng này? Thao tác này sẽ cập nhật lại doanh thu.')) {
+  const handleDeleteOrder = async (order: Order) => {
+    const isConfirmed = window.confirm('Xác nhận xóa đơn hàng này? Nhật ký xóa sẽ được lưu lại để đối soát.');
+    if (isConfirmed) {
         try {
-            await deleteDoc(doc(db, 'orders', orderId));
-        } catch (e) {
-            alert('Lỗi khi xóa đơn');
+            await addDoc(collection(db, 'deleted_orders'), {
+                originalId: order.id,
+                items: order.items.map(i => ({ name: i.name, quantity: i.quantity })),
+                total: order.total,
+                deletedAt: Date.now(),
+                deletedBy: adminUser.name,
+                deletedByRole: adminUser.role
+            });
+            await deleteDoc(doc(db, 'orders', order.id));
+            alert("Đã xóa thành công!");
+        } catch (e: any) {
+            console.error("Delete error:", e);
+            alert(`Lỗi khi xóa đơn: ${e.message}`);
         }
     }
   };
@@ -121,7 +103,6 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
           <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
       </h2>
 
-      {/* AI ASSISTANT SECTION */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
         <div className="relative z-10">
             <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
@@ -199,10 +180,10 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
                             <td className="px-6 py-4 font-black text-orange-600">{order.total.toLocaleString('vi-VN')} đ</td>
                             <td className="px-6 py-4 text-right">
                                 <button 
-                                    onClick={() => handleDeleteOrder(order.id)}
-                                    className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteOrder(order); }}
+                                    className="p-3 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all active:scale-90"
                                 >
-                                    <Trash2 size={18} />
+                                    <Trash2 size={20} />
                                 </button>
                             </td>
                         </tr>

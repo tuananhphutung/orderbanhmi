@@ -1,14 +1,16 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, CalendarClock, Package, LogOut, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarClock, Package, LogOut, BarChart2, Trash2 } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StaffManager from './StaffManager';
 import ShiftManager from './ShiftManager';
 import InventoryManager from './InventoryManager';
 import RevenueReport from './RevenueReport';
+import DeletedHistory from './DeletedHistory';
 import { User, Order, MenuItem, CheckInRecord, Shift } from '../../types';
 
 interface AdminLayoutProps {
+  user: User;
   onLogout: () => void;
   users: User[];
   setUsers: React.Dispatch<React.SetStateAction<User[]>>;
@@ -22,11 +24,11 @@ interface AdminLayoutProps {
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ 
-    onLogout, users, setUsers, orders, 
+    user, onLogout, users, setUsers, orders, 
     menuItems, setMenuItems, shifts, setShifts, 
     checkIns, onNotify 
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'revenue' | 'staff' | 'shifts' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'revenue' | 'deleted' | 'staff' | 'shifts' | 'inventory'>('dashboard');
 
   const NavItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
     <button 
@@ -47,7 +49,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   return (
     <div className="flex h-screen bg-gray-100 relative overflow-hidden flex-col md:flex-row">
       
-      {/* --- MOBILE HEADER --- */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-orange-200">BM</div>
@@ -55,7 +56,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
       </div>
 
-      {/* --- DESKTOP SIDEBAR --- */}
       <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-2xl">
         <div className="p-8 border-b border-gray-800/50">
           <h1 className="text-xl font-black text-orange-500 tracking-tighter uppercase">BM Hội An</h1>
@@ -65,6 +65,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
           <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'dashboard' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><LayoutDashboard size={20} /> Tổng quan</button>
           <button onClick={() => setActiveTab('revenue')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'revenue' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><BarChart2 size={20} /> Doanh thu</button>
+          <button onClick={() => setActiveTab('deleted')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'deleted' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><Trash2 size={20} /> Lịch sử xóa</button>
           <button onClick={() => setActiveTab('inventory')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><Package size={20} /> Kho hàng</button>
           <button onClick={() => setActiveTab('staff')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'staff' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><Users size={20} /> Nhân viên</button>
           <button onClick={() => setActiveTab('shifts')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'shifts' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><CalendarClock size={20} /> Ca trực</button>
@@ -77,29 +78,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
       </div>
 
-      {/* --- MAIN CONTENT --- */}
       <div className="flex-1 overflow-auto bg-gray-50 pt-14 pb-20 md:pt-0 md:pb-0 h-full">
-        {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} shifts={shifts} />}
-        {activeTab === 'revenue' && <RevenueReport orders={orders} />}
+        {activeTab === 'dashboard' && <Dashboard adminUser={user} users={users} orders={orders} shifts={shifts} />}
+        {activeTab === 'revenue' && <RevenueReport adminUser={user} orders={orders} />}
+        {activeTab === 'deleted' && <DeletedHistory />}
         {activeTab === 'staff' && <StaffManager users={users} setUsers={setUsers} />}
         {activeTab === 'shifts' && <ShiftManager users={users} shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={onNotify} />}
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
       </div>
 
-      {/* --- MOBILE BOTTOM NAVIGATION (6 TABS) --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 flex justify-between px-0.5 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
           <NavItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
           <NavItem id="revenue" icon={BarChart2} label="D.Thu" />
+          <NavItem id="deleted" icon={Trash2} label="Xóa" />
           <NavItem id="inventory" icon={Package} label="Kho" />
           <NavItem id="staff" icon={Users} label="N.Viên" />
           <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
-          
-          <button onClick={onLogout} className="flex flex-col items-center justify-center w-full py-1.5 text-red-500 active:scale-95 transition-transform">
-              <div className="p-1 rounded-xl">
-                  <LogOut size={20} strokeWidth={2.5} />
-              </div>
-              <span className="text-[8px] font-black mt-0.5 uppercase tracking-tighter">Thoát</span>
-          </button>
       </div>
 
     </div>

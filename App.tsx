@@ -49,8 +49,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- INITIALIZATION & SYNC ---
-
   useEffect(() => {
     const checkAndCreateAdmin = async () => {
         try {
@@ -351,6 +349,7 @@ const App: React.FC = () => {
       ) : currentUser && !isLoggingIn ? (
         currentUser.role === 'admin' ? (
             <AdminLayout 
+                user={currentUser}
                 onLogout={handleLogout} users={users} setUsers={setUsers}
                 orders={orders} menuItems={menuItems} setMenuItems={setMenuItems}
                 shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={addNotification}

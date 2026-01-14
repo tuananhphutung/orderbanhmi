@@ -1,20 +1,19 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order } from '../../types';
+import { Order, User } from '../../types';
 import { Calendar, CreditCard, Wallet, TrendingUp, FileText, Trash2, ChevronRight, ArrowRight } from 'lucide-react';
 import { db } from '../../firebase';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 
 interface RevenueReportProps {
   orders: Order[];
+  adminUser: User;
 }
 
-const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
-  // Trạng thái khoảng ngày: Mặc định là ngày hiện tại
+const RevenueReport: React.FC<RevenueReportProps> = ({ orders, adminUser }) => {
   const [startDate, setStartDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [endDate, setEndDate] = useState(new Date().toLocaleDateString('en-CA'));
 
-  // Lọc đơn hàng theo khoảng ngày được chọn
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       const orderDate = new Date(o.timestamp).toLocaleDateString('en-CA');
@@ -27,10 +26,17 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
   const cashRevenue = filteredOrders.filter(o => o.paymentMethod === 'cash').reduce((sum, o) => sum + o.total, 0);
   const transferRevenue = filteredOrders.filter(o => o.paymentMethod === 'transfer').reduce((sum, o) => sum + o.total, 0);
 
-  const handleDeleteOrder = async (orderId: string) => {
-      if (confirm('Xác nhận xóa đơn hàng này? Thao tác sẽ cập nhật lại số liệu báo cáo.')) {
+  const handleDeleteOrder = async (order: Order) => {
+      if (confirm('Xác nhận xóa đơn hàng? Nhật ký xóa sẽ được lưu lại để đối soát tài chính.')) {
           try {
-              await deleteDoc(doc(db, 'orders', orderId));
+              await addDoc(collection(db, 'deleted_orders'), {
+                  ...order,
+                  deletedAt: Date.now(),
+                  deletedBy: adminUser.name,
+                  deletedByRole: adminUser.role,
+                  originalId: order.id
+              });
+              await deleteDoc(doc(db, 'orders', order.id));
           } catch (e) {
               alert('Lỗi khi xóa đơn hàng');
           }
@@ -44,7 +50,6 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
       </h2>
 
       <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 mb-6">
-          {/* Bộ lọc khoảng ngày */}
           <div className="mb-8">
               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">CHỌN KHOẢNG NGÀY XEM</span>
               <div className="flex flex-col md:flex-row items-center gap-4 mt-3">
@@ -78,7 +83,6 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
               </div>
           </div>
 
-          {/* Cards Stack */}
           <div className="space-y-4">
               <div className="bg-[#f0f9f4] p-6 rounded-[28px] border border-green-100 flex items-center justify-between group">
                   <div className="flex items-center gap-4">
@@ -121,7 +125,6 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
           </div>
       </div>
 
-      {/* Danh sách chi tiết */}
       <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-50 bg-gray-50/30">
             <h3 className="font-bold text-gray-800">Chi tiết đơn hàng trong giai đoạn này</h3>
@@ -155,7 +158,7 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders }) => {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <button 
-                                        onClick={() => handleDeleteOrder(order.id)} 
+                                        onClick={() => handleDeleteOrder(order)} 
                                         className="p-2.5 text-gray-200 hover:text-red-500 hover:bg-red-50 rounded-2xl transition-all"
                                     >
                                         <Trash2 size={20} />
