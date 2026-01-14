@@ -6,6 +6,19 @@ import { GoogleGenAI } from "@google/genai";
 import { db } from '../../firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
 
+/**
+ * SHIM CHO BIẾN MÔI TRƯỜNG
+ * Giải quyết lỗi "process is not defined" trong môi trường trình duyệt.
+ * Tích hợp mã API người dùng cung cấp cho mục đích chạy nội bộ.
+ */
+if (typeof (globalThis as any).process === 'undefined') {
+  (globalThis as any).process = {
+    env: {
+      API_KEY: 'AIzaSyBWTX4HFkZ7HTbwv1LhEPMeLMuwupYUwRA'
+    }
+  };
+}
+
 interface DashboardProps {
   users: User[];
   orders: Order[];
@@ -23,23 +36,11 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
   const handleAIAnalyze = async () => {
     if (!aiQuery.trim()) return;
     
-    /**
-     * TRUY CẬP AN TOÀN BIẾN MÔI TRƯỜNG
-     * Sử dụng globalThis để tránh lỗi "ReferenceError: process is not defined" 
-     * trong các môi trường trình duyệt không có shim process.
-     */
-    const env = (globalThis as any).process?.env || {};
-    const apiKey = env.API_KEY;
-
-    if (!apiKey) {
-        setAiResponse("Lỗi: Hệ thống chưa nhận được API_KEY từ môi trường. Vui lòng kiểm tra cấu hình.");
-        return;
-    }
-
     setIsAnalyzing(true);
     setAiResponse('');
 
     try {
+        // Lấy dữ liệu 30 đơn hàng gần nhất làm ngữ cảnh
         const simplifiedOrders = orders.slice(0, 30).map(o => ({
             id: o.id.slice(-4),
             date: new Date(o.timestamp).toLocaleDateString('vi-VN'),
@@ -52,7 +53,11 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
             recent_orders: simplifiedOrders
         };
 
-        const ai = new GoogleGenAI({ apiKey });
+        /**
+         * KHỞI TẠO GEMINI AI
+         * Sử dụng process.env.API_KEY từ shim đã được định nghĩa ở trên.
+         */
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
         
         const prompt = `
             Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An.
@@ -67,11 +72,12 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
         });
 
         const rawText = response.text || "AI không trả về kết quả.";
+        // Loại bỏ ký tự ** gây nhiễu giao diện text thô
         setAiResponse(rawText.replaceAll('**', ''));
 
     } catch (error: any) {
         console.error("AI Error:", error);
-        setAiResponse(`Lỗi kết nối AI: ${error.message}`);
+        setAiResponse(`Lỗi phân tích: ${error.message}`);
     } finally {
         setIsAnalyzing(false);
     }
@@ -115,13 +121,13 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
           <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
       </h2>
 
-      {/* AI ASSISTANT - Giao diện tinh gọn, không cần nút chọn khóa */}
+      {/* AI ASSISTANT SECTION */}
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
         <div className="relative z-10">
             <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
                 <Sparkles className="text-yellow-300" /> Trợ lý AI Báo Cáo
             </h3>
-            <p className="text-indigo-100 text-sm mb-4">Phân tích nhanh doanh thu và xu hướng bán hàng bằng AI.</p>
+            <p className="text-indigo-100 text-sm mb-4">Hỏi AI về tình hình kinh doanh, xu hướng đơn hàng.</p>
             
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 flex items-center border border-white/20">
                 <input 
@@ -129,13 +135,13 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
-                    placeholder="Đặt câu hỏi cho AI..."
+                    placeholder="Nhập câu hỏi..."
                     className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
                 />
                 <button 
                     onClick={handleAIAnalyze}
                     disabled={isAnalyzing || !aiQuery.trim()}
-                    className="p-2 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all active:scale-95 shadow-lg"
+                    className="p-2 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-lg active:scale-95"
                 >
                     {isAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                 </button>
