@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Order, Shift } from '../../types';
-import { TrendingUp, Clock, Sparkles, Send, Loader2, Trash2, LogOut } from 'lucide-react';
+import { TrendingUp, Clock, Sparkles, Send, Loader2, Trash2, LogOut, Key, ExternalLink } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { db } from '../../firebase';
 
@@ -20,11 +20,35 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
   const [aiResponse, setAiResponse] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  // Kiểm tra xem đã có API Key chưa
+  useEffect(() => {
+    const checkKey = async () => {
+      if ((window as any).aistudio) {
+        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    if ((window as any).aistudio) {
+      await (window as any).aistudio.openSelectKey();
+      setHasApiKey(true);
+    }
+  };
 
   const handleAIAnalyze = async () => {
-    if (!aiQuery.trim()) {
+    const apiKey = (window as any).process?.env?.API_KEY;
+
+    if (!apiKey) {
+      setAiResponse("Lỗi: Chưa cấu hình API Key. Vui lòng nhấn nút 'Cấu hình AI' phía trên.");
       return;
     }
+
+    if (!aiQuery.trim()) return;
 
     setIsAnalyzing(true);
     setAiResponse('');
@@ -39,12 +63,11 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
         
         const contextData = { shop: "Bánh Mì Hội An", recent_orders: simplifiedOrders };
         
-        // Luôn khởi tạo instance mới ngay trước khi gọi API theo đúng guideline
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        // Khởi tạo instance mới với Key từ môi trường
+        const ai = new GoogleGenAI({ apiKey });
         
         const prompt = `Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An. Dữ liệu: ${JSON.stringify(contextData)} Câu hỏi: "${aiQuery}" Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. Dùng dấu gạch đầu dòng để liệt kê.`;
         
-        // Sử dụng model gemini-3-flash-preview cho các tác vụ phân tích văn bản cơ bản
         const response = await ai.models.generateContent({ 
             model: 'gemini-3-flash-preview', 
             contents: prompt,
@@ -53,11 +76,16 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
             }
         });
         
-        // Truy cập trực tiếp vào thuộc tính .text (không phải phương thức)
         setAiResponse(response.text || "AI không trả về kết quả.");
     } catch (error: any) {
         console.error("AI Error:", error);
-        setAiResponse(`Lỗi: ${error.message || 'Không thể kết nối AI'}`);
+        // Nếu lỗi do Key không tồn tại, yêu cầu chọn lại
+        if (error.message?.includes("Requested entity was not found")) {
+            setHasApiKey(false);
+            setAiResponse("Lỗi: API Key không hợp lệ hoặc đã hết hạn. Vui lòng cấu hình lại.");
+        } else {
+            setAiResponse(`Lỗi: ${error.message || 'Không thể kết nối AI'}`);
+        }
     } finally {
         setIsAnalyzing(false);
     }
@@ -119,36 +147,72 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
           </h2>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="md:hidden flex items-center gap-1 text-[10px] font-black text-red-500 uppercase bg-red-50 px-3 py-1.5 rounded-full border border-red-100"
-          >
-              <LogOut size={12} /> Thoát Admin
-          </button>
+          <div className="flex gap-2">
+            {!hasApiKey && (
+              <button 
+                onClick={handleSelectKey}
+                className="flex items-center gap-1 text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 hover:bg-blue-100 transition-colors"
+              >
+                  <Key size={12} /> Cấu hình AI
+              </button>
+            )}
+            <button 
+                onClick={() => window.location.reload()} 
+                className="md:hidden flex items-center gap-1 text-[10px] font-black text-red-500 uppercase bg-red-50 px-3 py-1.5 rounded-full border border-red-100"
+            >
+                <LogOut size={12} /> Thoát Admin
+            </button>
+          </div>
       </div>
 
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
         <div className="relative z-10">
-            <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
-                <Sparkles className="text-yellow-300" /> Trợ lý AI (Gemini 3 Flash)
-            </h3>
-            <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 flex items-center border border-white/20">
-                <input 
-                    type="text" 
-                    value={aiQuery}
-                    onChange={(e) => setAiQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
-                    placeholder="Hỏi AI: 'Hôm nay món nào bán chạy nhất?'"
-                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
-                />
-                <button 
-                    onClick={handleAIAnalyze}
-                    disabled={isAnalyzing || !aiQuery.trim()}
-                    className="p-2 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 shadow-lg"
-                >
-                    {isAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-                </button>
+            <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-bold flex items-center gap-2">
+                    <Sparkles className="text-yellow-300" /> Trợ lý AI (Gemini 3 Flash)
+                </h3>
+                {!hasApiKey && (
+                    <a 
+                        href="https://ai.google.dev/gemini-api/docs/billing" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="text-[10px] text-indigo-200 flex items-center gap-1 hover:text-white"
+                    >
+                        Hướng dẫn Billing <ExternalLink size={10} />
+                    </a>
+                )}
             </div>
+
+            {hasApiKey ? (
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 flex items-center border border-white/20">
+                    <input 
+                        type="text" 
+                        value={aiQuery}
+                        onChange={(e) => setAiQuery(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
+                        placeholder="Hỏi AI: 'Hôm nay món nào bán chạy nhất?'"
+                        className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
+                    />
+                    <button 
+                        onClick={handleAIAnalyze}
+                        disabled={isAnalyzing || !aiQuery.trim()}
+                        className="p-2 bg-white text-indigo-600 rounded-xl hover:bg-indigo-50 shadow-lg"
+                    >
+                        {isAnalyzing ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                    </button>
+                </div>
+            ) : (
+                <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-dashed border-white/30 text-center">
+                    <p className="text-indigo-100 text-sm mb-4">Bạn cần chọn API Key từ dự án có bật thanh toán (Paid Project) để sử dụng AI.</p>
+                    <button 
+                        onClick={handleSelectKey}
+                        className="bg-white text-indigo-600 px-6 py-2 rounded-xl font-bold shadow-lg hover:bg-indigo-50 transition-all flex items-center gap-2 mx-auto"
+                    >
+                        <Key size={18} /> Chọn API Key để bắt đầu
+                    </button>
+                </div>
+            )}
+
             {aiResponse && (
                 <div className="mt-4 bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-in slide-in-from-top-2 text-sm max-h-60 overflow-y-auto">
                     {aiResponse}
