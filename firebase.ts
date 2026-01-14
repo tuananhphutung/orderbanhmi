@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 
 // --- CẤU HÌNH FIREBASE ---
 const firebaseConfig = {
@@ -14,18 +14,31 @@ const firebaseConfig = {
   measurementId: "G-XVDW40LCGZ"
 };
 
-// Khởi tạo Firebase
+// Khởi tạo Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Cấu hình Firestore chuyên sâu cho Mobile App (Android/iOS)
-// 1. localCache: Lưu dữ liệu offline. Khi mất mạng, app vẫn order được, có mạng tự đồng bộ.
-// 2. experimentalForceLongPolling: Bắt buộc dùng Long Polling thay vì WebSockets để tương thích tốt nhất với mạng 3G/4G trên Android.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager(),
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED // Cho phép cache không giới hạn (tốt cho lưu menu ảnh)
-  }),
-  experimentalForceLongPolling: true, 
+/**
+ * SỬA LỖI: Firestore INTERNAL ASSERTION FAILED
+ * Sử dụng getFirestore mặc định thay vì initializeFirestore với cấu hình cache phức tạp 
+ * giúp giảm thiểu các lỗi logic nội bộ của SDK khi quản lý tab.
+ */
+const db = getFirestore(app);
+
+/**
+ * Kích hoạt Persistence (Lưu trữ ngoại tuyến)
+ * Sử dụng forceOwnership: true để instance hiện tại chiếm quyền ghi vào IndexedDB.
+ * Điều này đặc biệt quan trọng trên Mobile và PWA để tránh lỗi "Unexpected state".
+ */
+enableIndexedDbPersistence(db, { forceOwnership: true }).catch((err) => {
+    if (err.code === 'failed-precondition') {
+        // Nhiều tab đang mở, chỉ 1 tab được phép giữ quyền persistence
+        console.warn('Firestore Persistence: Đang có tab khác hoạt động.');
+    } else if (err.code === 'unimplemented') {
+        // Trình duyệt không hỗ trợ
+        console.warn('Firestore Persistence: Không được hỗ trợ trên trình duyệt này.');
+    } else {
+        console.error('Firestore Persistence Error:', err);
+    }
 });
 
 // --- CẤU HÌNH CLOUDINARY ---
@@ -74,8 +87,6 @@ export const uploadFileToFirebase = async (file: File, folder: string = 'uploads
     throw error;
   }
 };
-
-export const uploadImageToFirebase = (file: File) => uploadFileToFirebase(file, 'menu_items');
 
 export { app, db };
 export default app;

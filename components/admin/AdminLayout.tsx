@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, CalendarClock, Package, LogOut, BarChart2, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarClock, Package, LogOut, BarChart2 } from 'lucide-react';
 import Dashboard from './Dashboard';
 import StaffManager from './StaffManager';
 import ShiftManager from './ShiftManager';
@@ -31,85 +31,54 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const NavItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
     <button 
         onClick={() => setActiveTab(id)}
-        className={`flex flex-col items-center justify-center w-full py-2 transition-colors duration-200 ${
+        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-200 ${
             activeTab === id 
-            ? 'text-orange-600' 
+            ? 'text-orange-600 scale-105' 
             : 'text-gray-400 hover:text-gray-600'
         }`}
     >
-        <div className={`p-1 rounded-xl transition-all ${activeTab === id ? 'bg-orange-50 transform -translate-y-1' : ''}`}>
-            <Icon size={24} strokeWidth={activeTab === id ? 2.5 : 2} />
+        <div className={`p-1.5 rounded-2xl transition-all ${activeTab === id ? 'bg-orange-50' : ''}`}>
+            <Icon size={22} strokeWidth={activeTab === id ? 2.5 : 2} />
         </div>
-        <span className={`text-[10px] font-bold mt-1 ${activeTab === id ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+        <span className={`text-[9px] font-black mt-0.5 uppercase tracking-tighter ${activeTab === id ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
     </button>
   );
 
   return (
     <div className="flex h-screen bg-gray-100 relative overflow-hidden flex-col md:flex-row">
       
-      {/* --- MOBILE HEADER (Top Bar) --- */}
-      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 z-40 flex items-center justify-between px-4 shadow-sm">
+      {/* --- MOBILE HEADER --- */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white font-black text-xs">BM</div>
-              <span className="font-bold text-gray-800">Quản Trị Viên</span>
+              <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-orange-200">BM</div>
+              <span className="font-bold text-gray-800 tracking-tight text-sm">Quản trị hệ thống</span>
           </div>
-          <button onClick={onLogout} className="p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-red-50 hover:text-red-500">
-              <LogOut size={18} />
-          </button>
       </div>
 
-      {/* --- DESKTOP SIDEBAR (Hidden on Mobile) --- */}
-      <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-xl">
-        <div className="p-6 border-b border-gray-800">
-          <h1 className="text-xl font-bold text-orange-500">Bánh Mì Hội An</h1>
-          <p className="text-gray-400 text-xs mt-1">Administrator Control</p>
+      {/* --- DESKTOP SIDEBAR --- */}
+      <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-2xl">
+        <div className="p-8 border-b border-gray-800/50">
+          <h1 className="text-xl font-black text-orange-500 tracking-tighter uppercase">BM Hội An</h1>
+          <p className="text-gray-500 text-[10px] font-bold mt-1 uppercase tracking-widest">Hệ thống Admin</p>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <LayoutDashboard size={20} /> Tổng quan
-          </button>
-           <button 
-            onClick={() => setActiveTab('revenue')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'revenue' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <BarChart2 size={20} /> Báo cáo doanh thu
-          </button>
-          <button 
-            onClick={() => setActiveTab('staff')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'staff' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <Users size={20} /> Nhân viên
-          </button>
-           <button 
-            onClick={() => setActiveTab('shifts')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'shifts' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <CalendarClock size={20} /> Ca trực & Chấm công
-          </button>
-          <button 
-            onClick={() => setActiveTab('inventory')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors ${activeTab === 'inventory' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-          >
-            <Package size={20} /> Quản lý kho
-          </button>
+        <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'dashboard' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><LayoutDashboard size={20} /> Tổng quan</button>
+          <button onClick={() => setActiveTab('revenue')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'revenue' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><BarChart2 size={20} /> Doanh thu</button>
+          <button onClick={() => setActiveTab('inventory')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><Package size={20} /> Kho hàng</button>
+          <button onClick={() => setActiveTab('staff')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'staff' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><Users size={20} /> Nhân viên</button>
+          <button onClick={() => setActiveTab('shifts')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'shifts' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><CalendarClock size={20} /> Ca trực</button>
         </nav>
 
-        <div className="p-4 border-t border-gray-800">
-          <button 
-            onClick={onLogout}
-            className="w-full flex items-center gap-2 px-4 py-3 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-xl transition-colors"
-          >
-            <LogOut size={20} /> Đăng xuất
+        <div className="p-4 border-t border-gray-800/50">
+          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-4 text-red-400 font-bold text-sm hover:bg-red-500/10 rounded-2xl transition-all group">
+            <LogOut size={20} /> Thoát hệ thống
           </button>
         </div>
       </div>
 
       {/* --- MAIN CONTENT --- */}
-      <div className="flex-1 overflow-auto bg-gray-100 pt-14 pb-20 md:pt-0 md:pb-0 h-full">
+      <div className="flex-1 overflow-auto bg-gray-50 pt-14 pb-20 md:pt-0 md:pb-0 h-full">
         {activeTab === 'dashboard' && <Dashboard users={users} orders={orders} shifts={shifts} />}
         {activeTab === 'revenue' && <RevenueReport orders={orders} />}
         {activeTab === 'staff' && <StaffManager users={users} setUsers={setUsers} />}
@@ -117,13 +86,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
       </div>
 
-      {/* --- MOBILE BOTTOM NAVIGATION (App Style) --- */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex justify-between px-1 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+      {/* --- MOBILE BOTTOM NAVIGATION (6 TABS) --- */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 flex justify-between px-0.5 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
           <NavItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
           <NavItem id="revenue" icon={BarChart2} label="Doanh thu" />
           <NavItem id="inventory" icon={Package} label="Kho" />
+          <NavItem id="staff" icon={Users} label="N.Viên" />
           <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
-          <NavItem id="staff" icon={Users} label="Nhân viên" />
+          
+          <button onClick={onLogout} className="flex flex-col items-center justify-center w-full py-2 text-red-500 active:scale-95 transition-transform">
+              <div className="p-1.5">
+                  <LogOut size={22} strokeWidth={2.5} />
+              </div>
+              <span className="text-[9px] font-black mt-0.5 uppercase tracking-tighter">Thoát</span>
+          </button>
       </div>
 
     </div>
