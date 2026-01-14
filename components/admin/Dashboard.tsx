@@ -22,7 +22,6 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const handleAIAnalyze = async () => {
-    // Guideline: Assume process.env.API_KEY is pre-configured and valid.
     if (!aiQuery.trim()) {
       return;
     }
@@ -40,22 +39,21 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
         
         const contextData = { shop: "Bánh Mì Hội An", recent_orders: simplifiedOrders };
         
-        // Guideline: Always use new GoogleGenAI({apiKey: process.env.API_KEY}) directly before making an API call.
+        // Luôn khởi tạo instance mới ngay trước khi gọi API theo đúng guideline
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         const prompt = `Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An. Dữ liệu: ${JSON.stringify(contextData)} Câu hỏi: "${aiQuery}" Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. Dùng dấu gạch đầu dòng để liệt kê.`;
         
-        // Guideline: Use ai.models.generateContent to query GenAI with model and prompt.
-        // Guideline: Access extracted text using .text property (not a method).
+        // Sử dụng model gemini-3-flash-preview cho các tác vụ phân tích văn bản cơ bản
         const response = await ai.models.generateContent({ 
             model: 'gemini-3-flash-preview', 
             contents: prompt,
             config: {
-                // Guideline: Set thinkingBudget to 0 for lower latency responses.
                 thinkingConfig: { thinkingBudget: 0 }
             }
         });
         
+        // Truy cập trực tiếp vào thuộc tính .text (không phải phương thức)
         setAiResponse(response.text || "AI không trả về kết quả.");
     } catch (error: any) {
         console.error("AI Error:", error);
@@ -121,7 +119,6 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
           </h2>
-          {/* Nút Đăng xuất dự phòng cho Admin nếu Mobile bị khuất */}
           <button 
             onClick={() => window.location.reload()} 
             className="md:hidden flex items-center gap-1 text-[10px] font-black text-red-500 uppercase bg-red-50 px-3 py-1.5 rounded-full border border-red-100"
@@ -141,7 +138,7 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
-                    placeholder="Hỏi AI: 'Hôm nay bán món nào nhất?'"
+                    placeholder="Hỏi AI: 'Hôm nay món nào bán chạy nhất?'"
                     className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
                 />
                 <button 

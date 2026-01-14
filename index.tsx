@@ -3,8 +3,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
-// Fix: Removed manual shim for process.env. Guidelines prohibit defining process.env.
-// Assume process.env.API_KEY is handled externally by the environment.
+// Shim cho process.env để tránh lỗi ReferenceError trên trình duyệt
+if (typeof (window as any).process === 'undefined') {
+  (window as any).process = { env: {} };
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
