@@ -1,6 +1,7 @@
 
 import { initializeApp } from 'firebase/app';
-import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
+// Use getFirestore as the more standard way to initialize Firestore in modular SDK
+import { getFirestore } from 'firebase/firestore';
 
 // --- CẤU HÌNH FIREBASE ---
 const firebaseConfig = {
@@ -18,15 +19,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 /**
- * CẬP NHẬT: Sử dụng initializeFirestore với cấu hình cache hiện đại.
- * Giải quyết lỗi "enableIndexedDbPersistence() will be deprecated".
+ * CẬP NHẬT: Sử dụng getFirestore thay vì initializeFirestore để tối ưu hóa khả năng tương thích.
  */
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentSingleTabManager(),
-    cacheSizeBytes: CACHE_SIZE_UNLIMITED
-  })
-});
+const db = getFirestore(app);
 
 // --- CẤU HÌNH CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = "deuqalvq5"; 
