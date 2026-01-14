@@ -16,14 +16,20 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
   const [startDate, setStartDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [endDate, setEndDate] = useState(new Date().toLocaleDateString('en-CA'));
 
-  // AI State
   const [aiQuery, setAiQuery] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // --- LOGIC AI ANALYSIS ---
   const handleAIAnalyze = async () => {
     if (!aiQuery.trim()) return;
+    
+    // SỬA LỖI: Kiểm tra process có tồn tại hay không trước khi chạy AI
+    if (typeof process === 'undefined' || !process.env || !process.env.API_KEY) {
+        console.error("Môi trường chưa cung cấp API_KEY");
+        setAiResponse("Lỗi hệ thống: Không tìm thấy khóa AI (process is undefined). Hãy kiểm tra môi trường chạy.");
+        return;
+    }
+
     setIsAnalyzing(true);
     setAiResponse('');
 
@@ -40,14 +46,13 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
             recent_orders: simplifiedOrders
         };
 
-        // BẮT BUỘC: Dùng process.env.API_KEY và model gemini-3-flash-preview
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         const prompt = `
-            Bạn là trợ lý phân tích dữ liệu POS.
+            Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An.
             Dữ liệu: ${JSON.stringify(contextData)}
             Câu hỏi: "${aiQuery}"
-            Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. TUYỆT ĐỐI KHÔNG dùng ký tự "**" để in đậm. Dùng dấu gạch đầu dòng để liệt kê.
+            Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. TUYỆT ĐỐI KHÔNG dùng ký tự "**" để in đậm. Dùng dấu gạch đầu dòng để liệt kê thông tin quan trọng.
         `;
 
         const response = await ai.models.generateContent({
@@ -140,7 +145,6 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
         </div>
       </div>
 
-      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
           <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Doanh thu</p>
@@ -156,7 +160,6 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
         </div>
       </div>
 
-      {/* Recent Orders Table with Delete */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
             <h3 className="font-bold text-gray-800 flex items-center gap-2"><Clock size={20} /> Đơn hàng gần đây</h3>

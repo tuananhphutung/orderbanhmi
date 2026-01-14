@@ -31,16 +31,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const NavItem = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
     <button 
         onClick={() => setActiveTab(id)}
-        className={`flex flex-col items-center justify-center w-full py-2 transition-all duration-200 ${
+        className={`flex flex-col items-center justify-center w-full py-1.5 transition-all duration-200 ${
             activeTab === id 
-            ? 'text-orange-600 scale-105' 
+            ? 'text-orange-600' 
             : 'text-gray-400 hover:text-gray-600'
         }`}
     >
-        <div className={`p-1.5 rounded-2xl transition-all ${activeTab === id ? 'bg-orange-50' : ''}`}>
-            <Icon size={22} strokeWidth={activeTab === id ? 2.5 : 2} />
+        <div className={`p-1 rounded-xl transition-all ${activeTab === id ? 'bg-orange-50' : ''}`}>
+            <Icon size={20} strokeWidth={activeTab === id ? 2.5 : 2} />
         </div>
-        <span className={`text-[9px] font-black mt-0.5 uppercase tracking-tighter ${activeTab === id ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+        <span className={`text-[8px] font-black mt-0.5 uppercase tracking-tighter ${activeTab === id ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
     </button>
   );
 
@@ -51,7 +51,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-orange-200">BM</div>
-              <span className="font-bold text-gray-800 tracking-tight text-sm">Quản trị hệ thống</span>
+              <span className="font-bold text-gray-800 tracking-tight text-sm uppercase">Admin Panel</span>
           </div>
       </div>
 
@@ -63,15 +63,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
         
         <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'dashboard' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><LayoutDashboard size={20} /> Tổng quan</button>
-          <button onClick={() => setActiveTab('revenue')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'revenue' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><BarChart2 size={20} /> Doanh thu</button>
-          <button onClick={() => setActiveTab('inventory')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><Package size={20} /> Kho hàng</button>
-          <button onClick={() => setActiveTab('staff')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'staff' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><Users size={20} /> Nhân viên</button>
-          <button onClick={() => setActiveTab('shifts')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'shifts' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-gray-400 hover:bg-gray-800'}`}><CalendarClock size={20} /> Ca trực</button>
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'dashboard' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><LayoutDashboard size={20} /> Tổng quan</button>
+          <button onClick={() => setActiveTab('revenue')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'revenue' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><BarChart2 size={20} /> Doanh thu</button>
+          <button onClick={() => setActiveTab('inventory')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'inventory' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><Package size={20} /> Kho hàng</button>
+          <button onClick={() => setActiveTab('staff')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'staff' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><Users size={20} /> Nhân viên</button>
+          <button onClick={() => setActiveTab('shifts')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${activeTab === 'shifts' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-800'}`}><CalendarClock size={20} /> Ca trực</button>
         </nav>
 
         <div className="p-4 border-t border-gray-800/50">
-          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-4 text-red-400 font-bold text-sm hover:bg-red-500/10 rounded-2xl transition-all group">
+          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-4 text-red-400 font-bold text-sm hover:bg-red-500/10 rounded-2xl transition-all">
             <LogOut size={20} /> Thoát hệ thống
           </button>
         </div>
@@ -89,16 +89,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* --- MOBILE BOTTOM NAVIGATION (6 TABS) --- */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 flex justify-between px-0.5 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
           <NavItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
-          <NavItem id="revenue" icon={BarChart2} label="Doanh thu" />
+          <NavItem id="revenue" icon={BarChart2} label="D.Thu" />
           <NavItem id="inventory" icon={Package} label="Kho" />
           <NavItem id="staff" icon={Users} label="N.Viên" />
           <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
           
-          <button onClick={onLogout} className="flex flex-col items-center justify-center w-full py-2 text-red-500 active:scale-95 transition-transform">
-              <div className="p-1.5">
-                  <LogOut size={22} strokeWidth={2.5} />
+          <button onClick={onLogout} className="flex flex-col items-center justify-center w-full py-1.5 text-red-500 active:scale-95 transition-transform">
+              <div className="p-1 rounded-xl">
+                  <LogOut size={20} strokeWidth={2.5} />
               </div>
-              <span className="text-[9px] font-black mt-0.5 uppercase tracking-tighter">Thoát</span>
+              <span className="text-[8px] font-black mt-0.5 uppercase tracking-tighter">Thoát</span>
           </button>
       </div>
 

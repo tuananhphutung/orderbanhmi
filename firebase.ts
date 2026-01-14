@@ -1,6 +1,6 @@
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentSingleTabManager, CACHE_SIZE_UNLIMITED } from 'firebase/firestore';
 
 // --- CẤU HÌNH FIREBASE ---
 const firebaseConfig = {
@@ -14,31 +14,18 @@ const firebaseConfig = {
   measurementId: "G-XVDW40LCGZ"
 };
 
-// Khởi tạo Firebase App
+// Khởi tạo Firebase
 const app = initializeApp(firebaseConfig);
 
 /**
- * SỬA LỖI: Firestore INTERNAL ASSERTION FAILED
- * Sử dụng getFirestore mặc định thay vì initializeFirestore với cấu hình cache phức tạp 
- * giúp giảm thiểu các lỗi logic nội bộ của SDK khi quản lý tab.
+ * CẬP NHẬT: Sử dụng initializeFirestore với cấu hình cache hiện đại.
+ * Giải quyết lỗi "enableIndexedDbPersistence() will be deprecated".
  */
-const db = getFirestore(app);
-
-/**
- * Kích hoạt Persistence (Lưu trữ ngoại tuyến)
- * Sử dụng forceOwnership: true để instance hiện tại chiếm quyền ghi vào IndexedDB.
- * Điều này đặc biệt quan trọng trên Mobile và PWA để tránh lỗi "Unexpected state".
- */
-enableIndexedDbPersistence(db, { forceOwnership: true }).catch((err) => {
-    if (err.code === 'failed-precondition') {
-        // Nhiều tab đang mở, chỉ 1 tab được phép giữ quyền persistence
-        console.warn('Firestore Persistence: Đang có tab khác hoạt động.');
-    } else if (err.code === 'unimplemented') {
-        // Trình duyệt không hỗ trợ
-        console.warn('Firestore Persistence: Không được hỗ trợ trên trình duyệt này.');
-    } else {
-        console.error('Firestore Persistence Error:', err);
-    }
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentSingleTabManager(),
+    cacheSizeBytes: CACHE_SIZE_UNLIMITED
+  })
 });
 
 // --- CẤU HÌNH CLOUDINARY ---

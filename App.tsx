@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 
 const App: React.FC = () => {
-  // Global State (Synced with Firestore)
+  // Global State
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -24,13 +24,13 @@ const App: React.FC = () => {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   
-  // Local User State
+  // Local State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [pendingOrderItems, setPendingOrderItems] = useState<CartItem[]>([]);
   const [pendingTotal, setPendingTotal] = useState(0);
   const [pendingOrderInfo, setPendingOrderInfo] = useState<{source: OrderSource, name: string, phone: string} | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(true); // Default loading to true for auto-login check
+  const [isLoggingIn, setIsLoggingIn] = useState(true); 
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'error' | 'permission-denied'>('connecting');
   const [showConnectionStatus, setShowConnectionStatus] = useState(true);
 
@@ -38,7 +38,6 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info' | 'order'} | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Initialize Audio
   useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
   }, []);
@@ -50,29 +49,9 @@ const App: React.FC = () => {
     }
   };
 
-  // --- FORCE LOCATION REQUEST ON APP START ---
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-        // Gọi hàm này ngay lập tức để trình duyệt hiện popup xin quyền
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                console.log("Quyền vị trí đã được cấp:", position.coords);
-            },
-            (error) => {
-                console.warn("Chưa cấp quyền vị trí hoặc lỗi:", error.message);
-                // Không alert ở đây để tránh làm phiền nếu user chưa muốn, 
-                // nhưng popup của hệ điều hành sẽ hiện lên.
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    }
-  }, []);
-
   // --- INITIALIZATION & SYNC ---
 
-  // 1. Create Default Admin & Heartbeat
   useEffect(() => {
-    // Check/Create Admin
     const checkAndCreateAdmin = async () => {
         try {
             const q = query(collection(db, 'users'), where('username', '==', 'admin'));
@@ -86,80 +65,55 @@ const App: React.FC = () => {
                     status: 'active',
                     isOnline: false
                 });
-                console.log("Đã khởi tạo Admin mặc định thành công!");
             }
         } catch (error: any) {
-            console.error("Lỗi khởi tạo:", error);
-            if (error.code === 'permission-denied') {
-                setConnectionStatus('permission-denied');
-            }
+            if (error.code === 'permission-denied') setConnectionStatus('permission-denied');
         }
     };
 
-    // Heartbeat: Ghi vào Firestore mỗi 10s để chứng minh kết nối
     const heartbeat = async () => {
         try {
             const statusRef = doc(db, '_system', 'connection_status');
-            const data = {
+            await setDoc(statusRef, {
                 timestamp: new Date().toISOString(),
                 status: 'ONLINE',
-                message: 'App đang chạy tốt',
                 last_updated: Date.now()
-            };
-            // Dùng setDoc với merge: true để tạo nếu chưa có hoặc cập nhật nếu đã có
-            await setDoc(statusRef, data, { merge: true });
+            }, { merge: true });
         } catch (e: any) {
-            console.error("Heartbeat failed", e);
-            if (e.code === 'permission-denied') {
-                setConnectionStatus('permission-denied');
-            }
+            if (e.code === 'permission-denied') setConnectionStatus('permission-denied');
         }
     };
 
     checkAndCreateAdmin();
-    const interval = setInterval(heartbeat, 10000); // Chạy mỗi 10 giây
-    heartbeat(); // Chạy ngay lập tức
-
+    const interval = setInterval(heartbeat, 15000);
+    heartbeat();
     return () => clearInterval(interval);
   }, []);
 
-  // 2. Realtime Listeners & Auto Login Logic
   useEffect(() => {
     const handleError = (error: any) => {
-        console.error("Firebase connection error:", error);
-        if (error.code === 'permission-denied') {
-            setConnectionStatus('permission-denied');
-        } else {
-            setConnectionStatus('error');
-        }
+        if (error.code === 'permission-denied') setConnectionStatus('permission-denied');
+        else setConnectionStatus('error');
         setIsLoggingIn(false);
     };
 
-    // Users Listener - Handles Data Sync AND Auto Login
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
         setConnectionStatus('connected');
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         setUsers(items);
         
-        // AUTO LOGIN LOGIC
-        // Check local storage for saved session
         const savedUserId = localStorage.getItem('bm_saved_user_id');
-        
         if (currentUser) {
-            // Update current user info if changed in DB (e.g. locked status)
             if (currentUser.id !== 'offline_admin') {
                 const updatedMe = items.find(u => u.id === currentUser.id);
                 if (updatedMe) {
                      if (updatedMe.status === 'locked') {
                          alert("Tài khoản của bạn đã bị khóa.");
                          handleLogout();
-                     } else {
-                         setCurrentUser(updatedMe); 
-                     }
+                     } else setCurrentUser(updatedMe); 
                 }
             }
         } else if (savedUserId) {
-            // Attempt to auto-login from local storage
             if (savedUserId === 'offline_admin') {
                  setCurrentUser({
                     id: 'offline_admin',
@@ -172,63 +126,45 @@ const App: React.FC = () => {
                 });
             } else {
                 const foundUser = items.find(u => u.id === savedUserId);
-                if (foundUser) {
-                    if (foundUser.status === 'active') {
-                        setCurrentUser(foundUser);
-                        updateDoc(doc(db, 'users', foundUser.id), { isOnline: true }).catch(() => {});
-                    } else {
-                        localStorage.removeItem('bm_saved_user_id'); // Clear invalid session
-                    }
-                }
+                if (foundUser && foundUser.status === 'active') {
+                    setCurrentUser(foundUser);
+                    updateDoc(doc(db, 'users', foundUser.id), { isOnline: true }).catch(() => {});
+                } else localStorage.removeItem('bm_saved_user_id');
             }
         }
-        
-        setIsLoggingIn(false); // Done checking
+        setIsLoggingIn(false);
     }, handleError);
 
-    // Menu Listener
     const unsubMenu = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
         setMenuItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem)));
     }, handleError);
 
-    // Orders Listener
     const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (snapshot) => {
         setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
     }, handleError);
 
-    // Shifts Listener
     const unsubShifts = onSnapshot(collection(db, 'shifts'), (snapshot) => {
         setShifts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift)));
     }, handleError);
 
-    // Checkins Listener
     const unsubCheckIns = onSnapshot(query(collection(db, 'check_ins'), orderBy('timestamp', 'desc')), (snapshot) => {
         setCheckIns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CheckInRecord)));
     }, handleError);
     
-    // Notifications Listener with Pop-up Logic
     const unsubNotifs = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), (snapshot) => {
         const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         setNotifications(notifs);
 
-        // Detect NEW notifications for Pop-up
         snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
                 const data = change.doc.data() as Notification;
-                // Only show toast if notification is very recent (avoid showing old ones on refresh)
-                const isRecent = Date.now() - data.timestamp < 10000; // 10 seconds
-                
+                const isRecent = Date.now() - data.timestamp < 10000;
                 if (isRecent && currentUser) {
                     const isForMe = data.userId === currentUser.id;
                     const isAdmin = currentUser.role === 'admin';
-                    
-                    // Show if it's for me OR if I'm admin and it's a general system/order notification
                     if (isForMe || (isAdmin && (data.type === 'order' || data.type === 'shift'))) {
                         playNotificationSound();
-                        setToast({
-                            message: data.message,
-                            type: data.type === 'order' ? 'order' : 'success'
-                        });
+                        setToast({ message: data.message, type: data.type === 'order' ? 'order' : 'success' });
                     }
                 }
             }
@@ -238,39 +174,20 @@ const App: React.FC = () => {
     return () => {
         try { unsubUsers(); unsubMenu(); unsubOrders(); unsubShifts(); unsubCheckIns(); unsubNotifs(); } catch(e) {}
     };
-  }, [currentUser?.id, currentUser?.role]);
-
-  // Handle Window Close/Refresh for Online Status
-  useEffect(() => {
-      const handleBeforeUnload = () => {
-          if (currentUser) {
-             // Best effort
-          }
-      };
-      window.addEventListener('beforeunload', handleBeforeUnload);
-      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [currentUser]);
-
-  // --- ACTIONS ---
+  }, [currentUser?.id]);
 
   const handleLogin = async (data: LoginFormData) => {
     setIsLoggingIn(true);
     const cleanUsername = data.username.trim();
     const cleanPassword = data.password.trim();
 
-    // Offline Admin Backdoor
     if (cleanUsername === 'admin' && cleanPassword === '123456') {
         const adminUser = {
-            id: 'offline_admin',
-            name: 'Administrator',
-            username: 'admin',
-            password: '123456',
-            role: 'admin' as const,
-            status: 'active' as const,
-            isOnline: true
+            id: 'offline_admin', name: 'Administrator', username: 'admin', password: '123456',
+            role: 'admin' as const, status: 'active' as const, isOnline: true
         };
         setCurrentUser(adminUser);
-        localStorage.setItem('bm_saved_user_id', 'offline_admin'); // SAVE SESSION
+        localStorage.setItem('bm_saved_user_id', 'offline_admin');
         setIsLoggingIn(false);
         return; 
     }
@@ -285,39 +202,25 @@ const App: React.FC = () => {
             const q = query(collection(db, 'users'), where('username', '==', cleanUsername));
             const querySnapshot = await getDocs(q);
             let foundDocs = querySnapshot.docs;
-            
             if (foundDocs.length === 0) {
                  const qPhone = query(collection(db, 'users'), where('phone', '==', cleanUsername));
                  const phoneSnapshot = await getDocs(qPhone);
                  foundDocs = phoneSnapshot.docs;
             }
-
             const matchedDoc = foundDocs.find(d => d.data().password === cleanPassword);
-            if (matchedDoc) {
-                user = { id: matchedDoc.id, ...matchedDoc.data() } as User;
-            }
+            if (matchedDoc) user = { id: matchedDoc.id, ...matchedDoc.data() } as User;
         }
 
         if (user) {
-            if (user.role === 'staff') {
-                if (user.status === 'pending') {
-                    alert('Tài khoản đang chờ Admin duyệt!');
-                    setIsLoggingIn(false);
-                    return;
-                }
-                if (user.status === 'locked') {
-                    alert('Tài khoản đã bị khóa!');
-                    setIsLoggingIn(false);
-                    return;
-                }
+            if (user.role === 'staff' && (user.status === 'pending' || user.status === 'locked')) {
+                alert(user.status === 'pending' ? 'Tài khoản đang chờ duyệt!' : 'Tài khoản đã bị khóa!');
+                setIsLoggingIn(false);
+                return;
             }
-            // SUCCESS LOGIN
             updateDoc(doc(db, 'users', user.id), { isOnline: true }).catch(() => {});
             setCurrentUser({ ...user, isOnline: true });
-            localStorage.setItem('bm_saved_user_id', user.id); // SAVE SESSION
-        } else {
-            alert('Sai thông tin đăng nhập!');
-        }
+            localStorage.setItem('bm_saved_user_id', user.id);
+        } else alert('Sai thông tin đăng nhập!');
     } catch (e: any) {
         alert(`Lỗi kết nối: ${e.message}`);
     } finally {
@@ -326,51 +229,30 @@ const App: React.FC = () => {
   };
 
   const handleRegister = async (data: any) => {
-      if (users.some(u => u.phone === data.phone)) {
-          alert('Số điện thoại này đã được đăng ký!');
-          return;
-      }
+      if (users.some(u => u.phone === data.phone)) return alert('Số điện thoại này đã được đăng ký!');
       try {
         await addDoc(collection(db, 'users'), {
-            name: data.name,
-            username: data.phone, 
-            password: data.password,
-            role: 'staff',
-            status: 'pending',
-            phone: data.phone,
-            isOnline: false
+            name: data.name, username: data.phone, password: data.password,
+            role: 'staff', status: 'pending', phone: data.phone, isOnline: false
         });
         alert("Đăng ký thành công! Vui lòng chờ duyệt.");
-      } catch (e: any) {
-          alert(`Lỗi đăng ký: ${e.message}`);
-      }
+      } catch (e: any) { alert(`Lỗi đăng ký: ${e.message}`); }
   };
 
   const handleLogout = async () => {
     const userId = currentUser?.id;
-    const isOfflineAdmin = userId === 'offline_admin';
-
-    localStorage.removeItem('bm_saved_user_id'); // CLEAR SESSION
+    localStorage.removeItem('bm_saved_user_id');
     setCurrentUser(null);
     setCart([]);
     setShowPaymentModal(false);
-
-    if (userId && !isOfflineAdmin) {
-        try {
-            await updateDoc(doc(db, 'users', userId), { isOnline: false });
-        } catch (e) {}
+    if (userId && userId !== 'offline_admin') {
+        try { await updateDoc(doc(db, 'users', userId), { isOnline: false }); } catch (e) {}
     }
   };
 
   const addNotification = async (userId: string, message: string, type: 'system' | 'order' | 'shift' = 'system') => {
       try {
-        await addDoc(collection(db, 'notifications'), {
-            userId,
-            message,
-            isRead: false,
-            timestamp: Date.now(),
-            type
-        });
+        await addDoc(collection(db, 'notifications'), { userId, message, isRead: false, timestamp: Date.now(), type });
       } catch (e) {}
   };
 
@@ -383,99 +265,50 @@ const App: React.FC = () => {
 
   const confirmOrder = async (method: 'cash' | 'transfer') => {
     const newOrder = {
-      items: pendingOrderItems,
-      total: pendingTotal,
-      paymentMethod: method,
-      status: 'completed' as const,
-      timestamp: Date.now(),
-      staffId: currentUser?.id || 'unknown',
-      source: pendingOrderInfo?.source || 'app',
-      customerName: pendingOrderInfo?.name || '',
-      customerPhone: pendingOrderInfo?.phone || ''
+      items: pendingOrderItems, total: pendingTotal, paymentMethod: method,
+      status: 'completed' as const, timestamp: Date.now(),
+      staffId: currentUser?.id || 'unknown', source: pendingOrderInfo?.source || 'app',
+      customerName: pendingOrderInfo?.name || '', customerPhone: pendingOrderInfo?.phone || ''
     };
 
     try {
         const docRef = await addDoc(collection(db, 'orders'), newOrder);
-        
-        // Notify the current user (staff) about success
-        if (currentUser) {
-            const shortId = docRef.id.slice(-4).toUpperCase();
-            await addNotification(currentUser.id, `Đơn hàng ID:${shortId} đã thanh toán thành công!`, 'order');
-        }
-
-        // Notify Admin
-        const adminUsers = users.filter(u => u.role === 'admin');
-        adminUsers.forEach(admin => {
+        const shortId = docRef.id.slice(-4).toUpperCase();
+        if (currentUser) await addNotification(currentUser.id, `Đơn hàng ID:${shortId} thành công!`, 'order');
+        users.filter(u => u.role === 'admin').forEach(admin => {
              addNotification(admin.id, `Đơn mới từ ${currentUser?.name || 'Khách'}: ${pendingTotal.toLocaleString('vi-VN')}đ`, 'order');
         });
         
-        // --- LOGIC TRỪ KHO MỚI (PARENT/CHILD) ---
         pendingOrderItems.forEach(async (item) => {
-            // Tìm thông tin món trong danh sách menu hiện tại để biết nó có parent không
             const menuItem = menuItems.find(m => m.id === item.id);
-            
             if (menuItem) {
-                // Xác định ID cần trừ kho:
-                // Nếu là món con (có parentId) -> Trừ kho của Món Mẹ
-                // Nếu là món lẻ/món mẹ -> Trừ kho của chính nó
                 const targetId = menuItem.parentId || menuItem.id;
-                
-                // Lấy thông tin kho của món cần trừ (phải lấy từ menuItems mới nhất)
                 const targetItem = menuItems.find(m => m.id === targetId);
-
                 if (targetItem) {
                      const newStock = Math.max(0, targetItem.stock - item.quantity);
-                     const itemRef = doc(db, 'menu_items', targetId);
-                     updateDoc(itemRef, { stock: newStock }).catch(() => {});
+                     updateDoc(doc(db, 'menu_items', targetId), { stock: newStock }).catch(() => {});
                 }
             }
         });
-        
-    } catch (e) {
-        alert("Lỗi lưu đơn hàng (Mất kết nối).");
-    }
-
-    setShowPaymentModal(false);
-    setCart([]); 
-    setPendingOrderItems([]);
-    setPendingTotal(0);
-    setPendingOrderInfo(null);
+    } catch (e) { alert("Lỗi lưu đơn hàng."); }
+    setShowPaymentModal(false); setCart([]); setPendingOrderItems([]); setPendingTotal(0); setPendingOrderInfo(null);
   };
 
   const handleCheckIn = async (lat: number, lng: number, type: 'in' | 'out', imageFile?: File) => {
     try {
         let imageUrl = '';
-        if (imageFile) {
-            // Upload image evidence
-            imageUrl = await uploadFileToFirebase(imageFile, 'checkin_evidence');
-        }
-
+        if (imageFile) imageUrl = await uploadFileToFirebase(imageFile, 'checkin_evidence');
         await addDoc(collection(db, 'check_ins'), {
-            staffId: currentUser?.id || '',
-            timestamp: Date.now(),
-            latitude: lat,
-            longitude: lng,
-            address: type === 'in' ? 'Check In' : 'Check Out',
-            type: type,
-            imageUrl: imageUrl
+            staffId: currentUser?.id || '', timestamp: Date.now(),
+            latitude: lat, longitude: lng, address: type === 'in' ? 'Check In' : 'Check Out',
+            type, imageUrl
         });
-
-        // Notify Admin
-        const adminUsers = users.filter(u => u.role === 'admin');
         const timeStr = new Date().toLocaleTimeString('vi-VN');
-        adminUsers.forEach(admin => {
+        users.filter(u => u.role === 'admin').forEach(admin => {
              addNotification(admin.id, `${currentUser?.name} đã ${type === 'in' ? 'Check-in' : 'Check-out'} lúc ${timeStr}`, 'shift');
         });
-
-        // Notify User (trigger toast)
-        if (currentUser) {
-            addNotification(currentUser.id, `${type === 'in' ? 'Check-in' : 'Check-out'} thành công!`, 'system');
-        }
-
-    } catch (e: any) {
-        console.error(e);
-        alert(`Lỗi chấm công: ${e.message}`);
-    }
+        if (currentUser) addNotification(currentUser.id, `${type === 'in' ? 'Check-in' : 'Check-out'} thành công!`, 'system');
+    } catch (e: any) { alert(`Lỗi chấm công: ${e.message}`); }
   };
 
   return (
@@ -483,27 +316,19 @@ const App: React.FC = () => {
       <InstallPrompt />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       
-      {/* Connection Status Indicator */}
       {showConnectionStatus && (
-        <div className={`fixed bottom-4 left-4 z-[100] pl-3 pr-8 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all duration-500 shadow-lg group ${
+        <div className={`fixed bottom-4 left-4 z-[100] pl-3 pr-8 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 transition-all duration-500 shadow-lg ${
                 connectionStatus === 'connected' ? 'bg-green-100 text-green-700 border border-green-200' :
                 connectionStatus === 'permission-denied' ? 'bg-orange-100 text-orange-700 border border-orange-200' :
-                connectionStatus === 'error' ? 'bg-red-100 text-red-700 border border-red-200' :
-                'bg-gray-100 text-gray-500 opacity-0'
+                connectionStatus === 'error' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-gray-100 text-gray-500 opacity-0'
         }`}>
                 <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                 {connectionStatus === 'connected' ? (
-                    <div className="flex items-center gap-1"><Wifi size={12}/> Đã kết nối Server</div>
+                    <div className="flex items-center gap-1"><Wifi size={12}/> Đã kết nối</div>
                 ) : connectionStatus === 'permission-denied' ? (
-                    <div className="flex items-center gap-1"><AlertTriangle size={12}/> Lỗi: Chưa mở khóa Rules!</div>
-                ) : (
-                    <div className="flex items-center gap-1"><WifiOff size={12}/> Mất kết nối</div>
-                )}
-                
-                <button 
-                    onClick={() => setShowConnectionStatus(false)}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 bg-black/5 hover:bg-black/10 rounded-full"
-                >
+                    <div className="flex items-center gap-1"><AlertTriangle size={12}/> Lỗi Rules!</div>
+                ) : ( <div className="flex items-center gap-1"><WifiOff size={12}/> Mất kết nối</div> )}
+                <button onClick={() => setShowConnectionStatus(false)} className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600">
                     <X size={10} />
                 </button>
         </div>
@@ -516,48 +341,31 @@ const App: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                   <Loader2 className="animate-spin text-orange-500" />
-                  <span className="font-medium text-gray-500">Đang đăng nhập tự động...</span>
+                  <span className="font-medium text-gray-500">Đang khởi động...</span>
               </div>
           </div>
       )}
 
       {!currentUser && !isLoggingIn ? (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 relative font-sans">
-          <LoginForm onSubmit={handleLogin} onRegister={handleRegister} />
-        </div>
+        <LoginForm onSubmit={handleLogin} onRegister={handleRegister} />
       ) : currentUser && !isLoggingIn ? (
         currentUser.role === 'admin' ? (
             <AdminLayout 
-                onLogout={handleLogout}
-                users={users} setUsers={setUsers}
-                orders={orders}
-                menuItems={menuItems} setMenuItems={setMenuItems}
-                shifts={shifts} setShifts={setShifts}
-                checkIns={checkIns}
-                onNotify={addNotification}
+                onLogout={handleLogout} users={users} setUsers={setUsers}
+                orders={orders} menuItems={menuItems} setMenuItems={setMenuItems}
+                shifts={shifts} setShifts={setShifts} checkIns={checkIns} onNotify={addNotification}
             />
         ) : (
             <>
             <MainLayout 
-                user={currentUser} 
-                onLogout={handleLogout}
-                orders={orders}
-                cart={cart}
-                setCart={setCart}
-                menuItems={menuItems}
-                onPlaceOrder={initiateOrder}
-                onCheckIn={handleCheckIn}
+                user={currentUser} onLogout={handleLogout} orders={orders}
+                cart={cart} setCart={setCart} menuItems={menuItems}
+                onPlaceOrder={initiateOrder} onCheckIn={handleCheckIn}
                 checkInHistory={checkIns.filter(c => c.staffId === currentUser.id)}
                 notifications={notifications.filter(n => n.userId === currentUser.id)}
                 shifts={shifts}
             />
-            {showPaymentModal && (
-                <PaymentModal 
-                total={pendingTotal}
-                onClose={() => setShowPaymentModal(false)}
-                onConfirm={confirmOrder}
-                />
-            )}
+            {showPaymentModal && <PaymentModal total={pendingTotal} onClose={() => setShowPaymentModal(false)} onConfirm={confirmOrder} />}
             </>
         )
       ) : null}
