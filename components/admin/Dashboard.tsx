@@ -52,7 +52,6 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
         };
 
         // 2. Gọi Google Gemini API
-        // Lưu ý: Trong thực tế nên để API Key trong biến môi trường server-side để bảo mật.
         const ai = new GoogleGenAI({ apiKey: "AIzaSyAwBwbyD7-0bVa2c8FHveDk_6FgdxLxpGk" });
         
         const prompt = `
@@ -63,11 +62,12 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
 
             Câu hỏi của Admin: "${aiQuery}"
 
-            Yêu cầu:
+            Yêu cầu quan trọng về định dạng:
             1. Trả lời ngắn gọn, súc tích bằng tiếng Việt.
-            2. Nếu câu hỏi về doanh thu, hãy tính toán chính xác từ dữ liệu JSON cung cấp.
-            3. Có thể dùng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày đẹp.
-            4. Đưa ra nhận xét hoặc gợi ý nếu thấy xu hướng bất thường (nếu có dữ liệu).
+            2. TUYỆT ĐỐI KHÔNG sử dụng ký tự "**" để in đậm văn bản. 
+            3. Sử dụng xuống dòng và gạch đầu dòng (-) để trình bày các ý cho rõ ràng.
+            4. Nếu có tính toán doanh thu, hãy trình bày con số rõ ràng kèm đơn vị "đ".
+            5. Đưa ra nhận xét hoặc gợi ý dựa trên dữ liệu.
         `;
 
         const response = await ai.models.generateContent({
@@ -75,7 +75,11 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
             contents: prompt,
         });
 
-        setAiResponse(response.text || "Không thể phân tích dữ liệu lúc này.");
+        // Xóa mọi ký tự ** còn sót lại (nếu có) trước khi hiển thị
+        const rawText = response.text || "Không thể phân tích dữ liệu lúc này.";
+        const cleanText = rawText.replaceAll('**', '');
+        
+        setAiResponse(cleanText);
 
     } catch (error: any) {
         console.error("AI Error:", error);
@@ -182,7 +186,7 @@ const Dashboard: React.FC<DashboardProps> = ({ users, orders, shifts }) => {
 
             {aiResponse && (
                 <div className="mt-4 bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/10 animate-in fade-in slide-in-from-top-2">
-                    <div className="prose prose-invert prose-sm max-w-none text-indigo-50 whitespace-pre-line">
+                    <div className="prose prose-invert prose-sm max-w-none text-indigo-50 whitespace-pre-line font-medium leading-relaxed">
                         {aiResponse}
                     </div>
                 </div>
