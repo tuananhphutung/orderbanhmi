@@ -409,12 +409,25 @@ const App: React.FC = () => {
              addNotification(admin.id, `Đơn mới từ ${currentUser?.name || 'Khách'}: ${pendingTotal.toLocaleString('vi-VN')}đ`, 'order');
         });
         
+        // --- LOGIC TRỪ KHO MỚI (PARENT/CHILD) ---
         pendingOrderItems.forEach(async (item) => {
+            // Tìm thông tin món trong danh sách menu hiện tại để biết nó có parent không
             const menuItem = menuItems.find(m => m.id === item.id);
+            
             if (menuItem) {
-                const newStock = Math.max(0, menuItem.stock - item.quantity);
-                const itemRef = doc(db, 'menu_items', item.id);
-                updateDoc(itemRef, { stock: newStock }).catch(() => {});
+                // Xác định ID cần trừ kho:
+                // Nếu là món con (có parentId) -> Trừ kho của Món Mẹ
+                // Nếu là món lẻ/món mẹ -> Trừ kho của chính nó
+                const targetId = menuItem.parentId || menuItem.id;
+                
+                // Lấy thông tin kho của món cần trừ (phải lấy từ menuItems mới nhất)
+                const targetItem = menuItems.find(m => m.id === targetId);
+
+                if (targetItem) {
+                     const newStock = Math.max(0, targetItem.stock - item.quantity);
+                     const itemRef = doc(db, 'menu_items', targetId);
+                     updateDoc(itemRef, { stock: newStock }).catch(() => {});
+                }
             }
         });
         

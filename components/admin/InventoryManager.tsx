@@ -45,10 +45,26 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
     // Nếu là món con hoặc món lẻ, cần có giá. Món mẹ có thể không cần giá (hoặc giá đại diện 0)
     if (!newItem.isParent && !newItem.price) return alert("Vui lòng nhập giá bán");
 
+    // LOGIC KHO MỚI:
+    // - Món Con (có parentId): Stock = 0 (vì ăn theo mẹ)
+    // - Món Mẹ (isParent): Stock = User nhập
+    // - Topping: Stock = Vô hạn
+    // - Món lẻ: Stock = User nhập
+    let finalStock = 0;
+    if (newItem.category === 'topping') {
+        finalStock = 999999;
+    } else if (newItem.parentId) {
+        // Món con -> Stock 0 (ảo)
+        finalStock = 0;
+    } else {
+        // Món mẹ hoặc món lẻ -> Lấy stock nhập vào
+        finalStock = Number(newItem.stock || 0);
+    }
+
     const itemData: any = {
         name: newItem.name,
         price: newItem.isParent ? 0 : Number(newItem.price),
-        stock: newItem.category === 'topping' ? 999999 : (newItem.isParent ? 0 : Number(newItem.stock || 0)),
+        stock: finalStock,
         category: newItem.category,
         image: newItem.image,
         isParent: newItem.isParent,
@@ -173,25 +189,35 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                 {item.isParent && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold border border-orange-200">MÓN MẸ</span>}
             </div>
             
-            {!item.isParent && (
-                <>
-                <p className="text-sm font-semibold text-orange-600">{item.price.toLocaleString('vi-VN')} đ</p>
-                <div className="mt-2 flex items-center justify-between">
+            {/* Logic Hiển thị Giá và Kho */}
+            <div className="mt-1">
+                {!item.isParent && (
+                    <p className="text-sm font-semibold text-orange-600 mb-1">{item.price.toLocaleString('vi-VN')} đ</p>
+                )}
+
+                <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-gray-500">Kho:</span>
+                    
                     {item.category === 'topping' ? (
                         <div className="flex items-center gap-2 text-purple-600 font-bold bg-purple-50 px-2 py-0.5 rounded-lg text-xs">
                             <Infinity size={14} /> Vô hạn
                         </div>
+                    ) : (item.parentId) ? (
+                        // Nếu là món con, hiển thị text báo phụ thuộc món mẹ
+                        <div className="text-xs font-bold text-gray-400 italic bg-gray-100 px-2 py-0.5 rounded">
+                            Theo món mẹ
+                        </div>
                     ) : (
+                        // Món mẹ hoặc món lẻ -> Cho chỉnh sửa kho
                         <div className="flex items-center gap-2">
-                            <button onClick={() => updateStock(item.id, item.stock - 1)} className="w-5 h-5 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Minus size={10}/></button>
-                            <span className={`text-sm font-bold w-6 text-center ${item.stock < 5 ? 'text-red-500' : 'text-gray-800'}`}>{item.stock}</span>
-                            <button onClick={() => updateStock(item.id, item.stock + 1)} className="w-5 h-5 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Plus size={10}/></button>
+                            <button onClick={() => updateStock(item.id, item.stock - 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Minus size={12}/></button>
+                            <span className={`text-sm font-bold w-8 text-center ${item.stock < 5 ? 'text-red-500' : 'text-gray-800'}`}>{item.stock}</span>
+                            <button onClick={() => updateStock(item.id, item.stock + 1)} className="w-6 h-6 flex items-center justify-center bg-gray-50 border rounded hover:bg-gray-100"><Plus size={12}/></button>
                         </div>
                     )}
                 </div>
-                </>
-            )}
+            </div>
+
             {item.isParent && (
                 <p className="text-xs text-gray-500 mt-1 italic">Nhóm món ăn (Container)</p>
             )}
@@ -273,7 +299,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                     />
                     <label htmlFor="isParent" className="cursor-pointer select-none">
                         <span className="font-bold text-blue-800 block">Tạo Món Mẹ (Nhóm món)</span>
-                        <span className="text-xs text-blue-600">Ví dụ: "Bánh Mì" (chứa các loại nhân bên trong)</span>
+                        <span className="text-xs text-blue-600">Ví dụ: "Bánh Mì" (để quản lý kho vỏ bánh)</span>
                     </label>
                 </div>
 
@@ -287,6 +313,20 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                         placeholder={newItem.isParent ? "Ví dụ: Bánh Mì Truyền Thống" : "Ví dụ: Bánh Mì Trứng"}
                     />
                 </div>
+
+                {/* Form Logic: Nếu là Món Mẹ, hiển thị ô nhập Kho. Nếu là Món Con, ẩn ô nhập Kho */}
+                {newItem.isParent && (
+                    <div className="md:col-span-2">
+                         <label className="text-xs font-bold text-gray-500 uppercase">Số lượng kho (Vỏ bánh)</label>
+                         <input 
+                            type="number" 
+                            className="w-full p-2.5 border border-gray-200 rounded-lg mt-1 focus:ring-2 focus:ring-orange-500 outline-none" 
+                            value={newItem.stock} 
+                            onChange={e => setNewItem({...newItem, stock: e.target.value})} 
+                            placeholder="Nhập số lượng..."
+                        />
+                    </div>
+                )}
 
                 {!newItem.isParent && (
                     <>
@@ -330,17 +370,27 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
                             />
                         </div>
 
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Kho đầu</label>
-                            <input 
-                                type="number" 
-                                className={`w-full p-2.5 border border-gray-200 rounded-lg mt-1 outline-none ${newItem.category === 'topping' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'focus:ring-2 focus:ring-orange-500'}`}
-                                value={newItem.category === 'topping' ? '' : newItem.stock} 
-                                onChange={e => setNewItem({...newItem, stock: e.target.value})} 
-                                disabled={newItem.category === 'topping'}
-                                placeholder={newItem.category === 'topping' ? 'Vô hạn' : '50'}
-                            />
-                        </div>
+                        {/* Chỉ hiện ô nhập kho nếu là món lẻ hoặc topping (không có parentId) */}
+                        {!newItem.parentId && (
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Kho đầu</label>
+                                <input 
+                                    type="number" 
+                                    className={`w-full p-2.5 border border-gray-200 rounded-lg mt-1 outline-none ${newItem.category === 'topping' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'focus:ring-2 focus:ring-orange-500'}`}
+                                    value={newItem.category === 'topping' ? '' : newItem.stock} 
+                                    onChange={e => setNewItem({...newItem, stock: e.target.value})} 
+                                    disabled={newItem.category === 'topping'}
+                                    placeholder={newItem.category === 'topping' ? 'Vô hạn' : '50'}
+                                />
+                            </div>
+                        )}
+                        {newItem.parentId && (
+                            <div className="flex items-center">
+                                 <p className="text-sm text-gray-500 italic bg-gray-100 p-2 rounded-lg w-full text-center mt-6">
+                                    Kho sẽ trừ vào món mẹ đã chọn
+                                 </p>
+                            </div>
+                        )}
                     </>
                 )}
 

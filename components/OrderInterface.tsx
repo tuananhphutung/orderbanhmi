@@ -24,18 +24,39 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
 
   const addToCart = (item: MenuItem) => {
     const isTopping = item.category === 'topping';
+    
+    // --- LOGIC KIỂM TRA TỒN KHO MỚI ---
+    // Xác định item đích để kiểm tra kho (Nếu là con thì check kho mẹ)
+    const targetId = item.parentId || item.id;
+    const targetItem = menuItems.find(m => m.id === targetId);
+    
+    if (!targetItem) return;
 
-    if (!isTopping && item.stock <= 0) {
-      alert('Món này đã hết hàng!');
-      return;
+    // Tính tổng số lượng hiện tại trong giỏ hàng đang dùng chung kho với món này
+    const currentUsageInCart = cart.reduce((sum, cartItem) => {
+        // Tìm thông tin của món trong giỏ
+        const cartItemInfo = menuItems.find(m => m.id === cartItem.id);
+        if (!cartItemInfo) return sum;
+        
+        // Nếu món trong giỏ cũng trỏ tới cùng targetId (cùng mẹ hoặc chính là nó)
+        const cartTargetId = cartItemInfo.parentId || cartItemInfo.id;
+        
+        return cartTargetId === targetId ? sum + cartItem.quantity : sum;
+    }, 0);
+
+    // Kiểm tra tồn kho
+    const maxStock = targetItem.stock;
+    if (!isTopping && (currentUsageInCart + 1 > maxStock)) {
+        alert(item.parentId 
+            ? `Hết vỏ bánh! (Món mẹ "${targetItem.name}" chỉ còn ${maxStock})` 
+            : `Món này đã hết hàng! (Còn ${maxStock})`
+        );
+        return;
     }
+
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
-        if (!isTopping && existing.quantity >= item.stock) {
-           alert(`Chỉ còn ${item.stock} phần!`);
-           return prev;
-        }
         return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
       return [...prev, { ...item, quantity: 1 }];
@@ -46,12 +67,33 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
     setCart(prev => prev.map(item => {
       if (item.id === id) {
         const menuItem = menuItems.find(m => m.id === id);
-        const maxStock = menuItem ? menuItem.stock : 999;
-        const isTopping = menuItem?.category === 'topping';
+        if (!menuItem) return item;
+
+        const isTopping = menuItem.category === 'topping';
         const newQty = item.quantity + delta;
         
-        if (!isTopping && newQty > maxStock) return item;
-        return { ...item, quantity: Math.max(0, newQty) };
+        // Nếu giảm số lượng -> OK ngay (miễn > 0)
+        if (delta < 0) return { ...item, quantity: Math.max(0, newQty) };
+
+        // Nếu tăng số lượng -> Cần check kho Món Mẹ
+        const targetId = menuItem.parentId || menuItem.id;
+        const targetItem = menuItems.find(m => m.id === targetId);
+        const maxStock = targetItem ? targetItem.stock : 0;
+
+        // Tính tổng sử dụng TRƯỚC khi tăng của các món cùng mẹ
+        const currentTotalUsage = prev.reduce((sum, cartItem) => {
+             const cartItemInfo = menuItems.find(m => m.id === cartItem.id);
+             const cartTargetId = cartItemInfo?.parentId || cartItemInfo?.id;
+             return cartTargetId === targetId ? sum + cartItem.quantity : sum;
+        }, 0);
+        
+        // Nếu thêm 1 mà vượt quá stock
+        if (!isTopping && (currentTotalUsage + 1 > maxStock)) {
+            alert(menuItem.parentId ? "Hết vỏ bánh!" : "Hết hàng!");
+            return item;
+        }
+        
+        return { ...item, quantity: newQty };
       }
       return item;
     }).filter(item => item.quantity > 0));
@@ -89,6 +131,16 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
           return matchesCategory && matchesSearch;
       });
   }, [menuItems, selectedCategory, searchQuery]);
+
+  // Helper để lấy số lượng tồn kho hiển thị (của mẹ hoặc của chính nó)
+  const getDisplayStock = (item: MenuItem) => {
+      if (item.category === 'topping') return 999;
+      if (item.parentId) {
+          const parent = menuItems.find(p => p.id === item.parentId);
+          return parent ? parent.stock : 0;
+      }
+      return item.stock;
+  }
 
   return (
     <div className="flex h-full bg-gray-100 overflow-hidden relative">
@@ -134,7 +186,8 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredItems.map(item => {
               const isTopping = item.category === 'topping';
-              const isOutOfStock = !isTopping && item.stock === 0;
+              const displayStock = getDisplayStock(item);
+              const isOutOfStock = !isTopping && displayStock === 0;
 
               return (
                 <div 
@@ -174,11 +227,11 @@ const OrderInterface: React.FC<OrderInterfaceProps> = ({ cart, setCart, menuItem
                                 <span className="bg-purple-500/90 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-purple-400">
                                     TOPPING
                                 </span>
-                            ) : item.stock === 0 ? (
+                            ) : isOutOfStock ? (
                                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">HẾT HÀNG</span>
                             ) : (
                                 <span className="bg-white/90 backdrop-blur text-gray-700 text-[10px] font-bold px-2 py-1 rounded shadow-sm border border-gray-100">
-                                    Kho: {item.stock}
+                                    Kho: {displayStock}
                                 </span>
                             )}
                         </div>
