@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { User } from '../../types';
 import { UserPlus, Lock, Unlock, Trash2, Check, Eye, EyeOff } from 'lucide-react';
 import { db } from '../../firebase';
-import { addDoc, collection, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface StaffManagerProps {
   users: User[];
@@ -28,7 +27,8 @@ const StaffManager: React.FC<StaffManagerProps> = ({ users }) => {
     }
 
     try {
-        const docRef = await addDoc(collection(db, 'users'), {
+        // Using v8 add syntax
+        const docRef = await db.collection('users').add({
             name: newStaff.name,
             username: newStaff.phone,
             password: newStaff.password,
@@ -50,10 +50,12 @@ const StaffManager: React.FC<StaffManagerProps> = ({ users }) => {
     try {
         if (status === 'delete') {
             if (confirm('Xóa nhân viên này?')) {
-                await deleteDoc(doc(db, 'users', id));
+                // Using v8 delete syntax
+                await db.collection('users').doc(id).delete();
             }
         } else {
-            await updateDoc(doc(db, 'users', id), { status: status });
+            // Using v8 update syntax
+            await db.collection('users').doc(id).update({ status: status });
         }
     } catch (e) {
         console.error("Error updating status", e);

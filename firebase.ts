@@ -1,7 +1,7 @@
 
-import { initializeApp } from 'firebase/app';
-// Use getFirestore as the more standard way to initialize Firestore in modular SDK
-import { getFirestore } from 'firebase/firestore';
+// Fix: Use compat version of Firebase for v8-style API compatibility in a v9+ environment
+import firebase from 'firebase/compat/app';
+import 'firebase/compat/firestore';
 
 // --- CẤU HÌNH FIREBASE ---
 const firebaseConfig = {
@@ -16,12 +16,14 @@ const firebaseConfig = {
 };
 
 // Khởi tạo Firebase
-const app = initializeApp(firebaseConfig);
+// Fix: Use compat initializeApp to resolve property missing error on modular SDK
+const app = firebase.initializeApp(firebaseConfig);
 
 /**
- * CẬP NHẬT: Sử dụng getFirestore thay vì initializeFirestore để tối ưu hóa khả năng tương thích.
+ * CẬP NHẬT: Sử dụng firebase.firestore() cho khả năng tương thích với môi trường hiện tại.
+ * Fix: Use compat firestore to resolve property missing error on modular SDK
  */
-const db = getFirestore(app);
+const db = firebase.firestore();
 
 // --- CẤU HÌNH CLOUDINARY ---
 const CLOUDINARY_CLOUD_NAME = "deuqalvq5"; 

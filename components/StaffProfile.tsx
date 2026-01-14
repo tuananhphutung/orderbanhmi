@@ -2,7 +2,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User, CheckInRecord, Shift } from '../types';
 import { MapPin, Calendar, User as UserIcon, ShieldCheck, MapPinned, LogOut, Loader2, Save, X, Settings, Upload, Camera, Eye, EyeOff } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
 import { db, uploadFileToFirebase } from '../firebase';
 
 interface StaffProfileProps {
@@ -143,7 +142,8 @@ const StaffProfile: React.FC<StaffProfileProps> = ({ user, onCheckIn, checkInHis
   const handleSaveProfile = async () => {
       setIsSavingProfile(true);
       try {
-          await updateDoc(doc(db, 'users', user.id), {
+          // Using v8 update syntax
+          await db.collection('users').doc(user.id).update({
               name: editForm.name,
               password: editForm.password,
               avatar: editForm.avatar

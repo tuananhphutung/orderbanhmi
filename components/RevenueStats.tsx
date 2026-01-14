@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Order, User } from '../types';
 import { TrendingUp, List, ChevronLeft, ChevronRight, Trash2, AlertCircle, Loader2 } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, writeBatch, collection } from 'firebase/firestore';
 
 interface RevenueStatsProps {
   orders: Order[];
@@ -45,10 +44,11 @@ const RevenueStats: React.FC<RevenueStatsProps> = ({ orders, user }) => {
       try {
         console.log("Initiating atomic batch delete for:", order.id);
         
-        const batch = writeBatch(db);
+        // Using v8 batch syntax
+        const batch = db.batch();
         
         // 1. Tạo bản sao nhật ký (logEntry)
-        const logRef = doc(collection(db, 'deleted_orders'));
+        const logRef = db.collection('deleted_orders').doc();
         const logEntry = {
             originalOrderId: order.id,
             total: Number(order.total),
@@ -62,7 +62,7 @@ const RevenueStats: React.FC<RevenueStatsProps> = ({ orders, user }) => {
         batch.set(logRef, logEntry);
 
         // 2. Lệnh xóa đơn chính
-        const orderRef = doc(db, 'orders', order.id);
+        const orderRef = db.collection('orders').doc(order.id);
         batch.delete(orderRef);
 
         // 3. Thực thi đồng thời

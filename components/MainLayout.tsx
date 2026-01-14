@@ -6,7 +6,6 @@ import RevenueStats from './RevenueStats';
 import StaffProfile from './StaffProfile';
 import { LogOut, LayoutGrid, BarChart3, UserCircle, Bell, CheckCheck } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 
 interface MainLayoutProps {
   user: User;
@@ -42,14 +41,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   const markAsRead = async (notificationId: string) => {
       try {
-          await updateDoc(doc(db, 'notifications', notificationId), { isRead: true });
+          // Using v8 update syntax
+          await db.collection('notifications').doc(notificationId).update({ isRead: true });
       } catch (e) {}
   };
 
   const markAllRead = async () => {
-      const batch = writeBatch(db);
+      // Using v8 batch syntax
+      const batch = db.batch();
       notifications.filter(n => !n.isRead).forEach(n => {
-          const ref = doc(db, 'notifications', n.id);
+          const ref = db.collection('notifications').doc(n.id);
           batch.update(ref, { isRead: true });
       });
       try {

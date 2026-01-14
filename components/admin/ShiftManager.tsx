@@ -1,8 +1,8 @@
+
 import React, { useState } from 'react';
 import { User, Shift, CheckInRecord } from '../../types';
 import { CalendarClock, MapPin, CheckCircle, AlertCircle, Plus, Camera, LogOut, LogIn } from 'lucide-react';
 import { db } from '../../firebase';
-import { addDoc, collection } from 'firebase/firestore';
 
 interface ShiftManagerProps {
   users: User[];
@@ -30,7 +30,8 @@ const ShiftManager: React.FC<ShiftManagerProps> = ({ users, shifts, checkIns, on
     };
 
     try {
-        await addDoc(collection(db, 'shifts'), shiftData);
+        // Using v8 add syntax
+        await db.collection('shifts').add(shiftData);
         newShift.staffIds.forEach(uid => {
             onNotify(uid, `Bạn có lịch trực mới ngày ${newShift.date} (${newShift.start} - ${newShift.end})`);
         });

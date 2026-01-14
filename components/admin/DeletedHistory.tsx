@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Trash2, Calendar, User, ShoppingBag } from 'lucide-react';
 
 const DeletedHistory: React.FC = () => {
@@ -9,8 +8,8 @@ const DeletedHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'deleted_orders'), orderBy('deletedAt', 'desc'));
-    const unsub = onSnapshot(q, (snapshot) => {
+    // Using v8 onSnapshot syntax with query methods
+    const unsub = db.collection('deleted_orders').orderBy('deletedAt', 'desc').onSnapshot((snapshot) => {
       setDeletedOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoading(false);
     });

@@ -9,10 +9,6 @@ import Toast from './components/Toast';
 import { LoginFormData, User, Order, CartItem, CheckInRecord, MenuItem, OrderSource, Shift, Notification } from './types';
 import { Loader2, Wifi, WifiOff, AlertTriangle, X } from 'lucide-react';
 import { db, uploadFileToFirebase } from './firebase';
-import { 
-  collection, onSnapshot, addDoc, updateDoc, doc, setDoc,
-  query, where, getDocs, orderBy 
-} from 'firebase/firestore';
 
 const App: React.FC = () => {
   // Global State
@@ -52,10 +48,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAndCreateAdmin = async () => {
         try {
-            const q = query(collection(db, 'users'), where('username', '==', 'admin'));
-            const querySnapshot = await getDocs(q);
+            // Using v8 query syntax
+            const q = db.collection('users').where('username', '==', 'admin');
+            const querySnapshot = await q.get();
             if (querySnapshot.empty) {
-                await addDoc(collection(db, 'users'), {
+                await db.collection('users').add({
                     name: 'Administrator',
                     username: 'admin',
                     password: '123456',
@@ -71,8 +68,9 @@ const App: React.FC = () => {
 
     const heartbeat = async () => {
         try {
-            const statusRef = doc(db, '_system', 'connection_status');
-            await setDoc(statusRef, {
+            // Using v8 doc/set syntax
+            const statusRef = db.collection('_system').doc('connection_status');
+            await statusRef.set({
                 timestamp: new Date().toISOString(),
                 status: 'ONLINE',
                 last_updated: Date.now()
@@ -95,7 +93,8 @@ const App: React.FC = () => {
         setIsLoggingIn(false);
     };
 
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+    // Using v8 onSnapshot syntax
+    const unsubUsers = db.collection('users').onSnapshot((snapshot) => {
         setConnectionStatus('connected');
         const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         setUsers(items);
@@ -126,30 +125,30 @@ const App: React.FC = () => {
                 const foundUser = items.find(u => u.id === savedUserId);
                 if (foundUser && foundUser.status === 'active') {
                     setCurrentUser(foundUser);
-                    updateDoc(doc(db, 'users', foundUser.id), { isOnline: true }).catch(() => {});
+                    db.collection('users').doc(foundUser.id).update({ isOnline: true }).catch(() => {});
                 } else localStorage.removeItem('bm_saved_user_id');
             }
         }
         setIsLoggingIn(false);
     }, handleError);
 
-    const unsubMenu = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
+    const unsubMenu = db.collection('menu_items').onSnapshot((snapshot) => {
         setMenuItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem)));
     }, handleError);
 
-    const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (snapshot) => {
+    const unsubOrders = db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         setOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order)));
     }, handleError);
 
-    const unsubShifts = onSnapshot(collection(db, 'shifts'), (snapshot) => {
+    const unsubShifts = db.collection('shifts').onSnapshot((snapshot) => {
         setShifts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shift)));
     }, handleError);
 
-    const unsubCheckIns = onSnapshot(query(collection(db, 'check_ins'), orderBy('timestamp', 'desc')), (snapshot) => {
+    const unsubCheckIns = db.collection('check_ins').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         setCheckIns(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CheckInRecord)));
     }, handleError);
     
-    const unsubNotifs = onSnapshot(query(collection(db, 'notifications'), orderBy('timestamp', 'desc')), (snapshot) => {
+    const unsubNotifs = db.collection('notifications').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
         setNotifications(notifs);
 
@@ -197,12 +196,12 @@ const App: React.FC = () => {
         );
 
         if (!user) {
-            const q = query(collection(db, 'users'), where('username', '==', cleanUsername));
-            const querySnapshot = await getDocs(q);
+            const q = db.collection('users').where('username', '==', cleanUsername);
+            const querySnapshot = await q.get();
             let foundDocs = querySnapshot.docs;
             if (foundDocs.length === 0) {
-                 const qPhone = query(collection(db, 'users'), where('phone', '==', cleanUsername));
-                 const phoneSnapshot = await getDocs(qPhone);
+                 const qPhone = db.collection('users').where('phone', '==', cleanUsername);
+                 const phoneSnapshot = await qPhone.get();
                  foundDocs = phoneSnapshot.docs;
             }
             const matchedDoc = foundDocs.find(d => d.data().password === cleanPassword);
@@ -215,7 +214,7 @@ const App: React.FC = () => {
                 setIsLoggingIn(false);
                 return;
             }
-            updateDoc(doc(db, 'users', user.id), { isOnline: true }).catch(() => {});
+            db.collection('users').doc(user.id).update({ isOnline: true }).catch(() => {});
             setCurrentUser({ ...user, isOnline: true });
             localStorage.setItem('bm_saved_user_id', user.id);
         } else alert('Sai thông tin đăng nhập!');
@@ -229,7 +228,7 @@ const App: React.FC = () => {
   const handleRegister = async (data: any) => {
       if (users.some(u => u.phone === data.phone)) return alert('Số điện thoại này đã được đăng ký!');
       try {
-        await addDoc(collection(db, 'users'), {
+        await db.collection('users').add({
             name: data.name, username: data.phone, password: data.password,
             role: 'staff', status: 'pending', phone: data.phone, isOnline: false
         });
@@ -244,13 +243,13 @@ const App: React.FC = () => {
     setCart([]);
     setShowPaymentModal(false);
     if (userId && userId !== 'offline_admin') {
-        try { await updateDoc(doc(db, 'users', userId), { isOnline: false }); } catch (e) {}
+        try { await db.collection('users').doc(userId).update({ isOnline: false }); } catch (e) {}
     }
   };
 
   const addNotification = async (userId: string, message: string, type: 'system' | 'order' | 'shift' = 'system') => {
       try {
-        await addDoc(collection(db, 'notifications'), { userId, message, isRead: false, timestamp: Date.now(), type });
+        await db.collection('notifications').add({ userId, message, isRead: false, timestamp: Date.now(), type });
       } catch (e) {}
   };
 
@@ -270,7 +269,7 @@ const App: React.FC = () => {
     };
 
     try {
-        const docRef = await addDoc(collection(db, 'orders'), newOrder);
+        const docRef = await db.collection('orders').add(newOrder);
         const shortId = docRef.id.slice(-4).toUpperCase();
         if (currentUser) await addNotification(currentUser.id, `Đơn hàng ID:${shortId} thành công!`, 'order');
         users.filter(u => u.role === 'admin').forEach(admin => {
@@ -284,7 +283,7 @@ const App: React.FC = () => {
                 const targetItem = menuItems.find(m => m.id === targetId);
                 if (targetItem) {
                      const newStock = Math.max(0, targetItem.stock - item.quantity);
-                     updateDoc(doc(db, 'menu_items', targetId), { stock: newStock }).catch(() => {});
+                     db.collection('menu_items').doc(targetId).update({ stock: newStock }).catch(() => {});
                 }
             }
         });
@@ -296,7 +295,7 @@ const App: React.FC = () => {
     try {
         let imageUrl = '';
         if (imageFile) imageUrl = await uploadFileToFirebase(imageFile, 'checkin_evidence');
-        await addDoc(collection(db, 'check_ins'), {
+        await db.collection('check_ins').add({
             staffId: currentUser?.id || '', timestamp: Date.now(),
             latitude: lat, longitude: lng, address: type === 'in' ? 'Check In' : 'Check Out',
             type, imageUrl

@@ -1,10 +1,9 @@
 
 import React, { useState } from 'react';
 import { User, Order, Shift } from '../../types';
-import { TrendingUp, Clock, Sparkles, Send, Loader2, Trash2 } from 'lucide-react';
+import { TrendingUp, Clock, Sparkles, Send, Loader2, Trash2, LogOut } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
 import { db } from '../../firebase';
-import { doc, writeBatch, collection } from 'firebase/firestore';
 
 interface DashboardProps {
   adminUser: User;
@@ -23,9 +22,14 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const handleAIAnalyze = async () => {
-    if (!aiQuery.trim() || !process.env.API_KEY) return;
+    // Guideline: Assume process.env.API_KEY is pre-configured and valid.
+    if (!aiQuery.trim()) {
+      return;
+    }
+
     setIsAnalyzing(true);
     setAiResponse('');
+    
     try {
         const simplifiedOrders = orders.slice(0, 30).map(o => ({
             id: o.id.slice(-4),
@@ -33,21 +37,25 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
             total: o.total,
             items: o.items.map(i => `${i.quantity}x ${i.name}`).join(', ')
         }));
+        
         const contextData = { shop: "Bánh Mì Hội An", recent_orders: simplifiedOrders };
-        // Create a new instance right before making an API call to ensure it uses the latest key if applicable
+        
+        // Guideline: Always use new GoogleGenAI({apiKey: process.env.API_KEY}) directly before making an API call.
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        
         const prompt = `Bạn là trợ lý phân tích dữ liệu POS cho cửa hàng Bánh Mì Hội An. Dữ liệu: ${JSON.stringify(contextData)} Câu hỏi: "${aiQuery}" Yêu cầu: Trả lời ngắn gọn bằng tiếng Việt. Dùng dấu gạch đầu dòng để liệt kê.`;
         
-        // Use gemini-3-pro-preview for complex reasoning tasks like POS data analysis
+        // Guideline: Use ai.models.generateContent to query GenAI with model and prompt.
+        // Guideline: Access extracted text using .text property (not a method).
         const response = await ai.models.generateContent({ 
-            model: 'gemini-3-pro-preview', 
+            model: 'gemini-3-flash-preview', 
             contents: prompt,
             config: {
-                thinkingConfig: { thinkingBudget: 32768 } // Optional: provide maximum budget for deep reasoning
+                // Guideline: Set thinkingBudget to 0 for lower latency responses.
+                thinkingConfig: { thinkingBudget: 0 }
             }
         });
         
-        // Accessing .text property directly as per latest GenAI SDK guidelines
         setAiResponse(response.text || "AI không trả về kết quả.");
     } catch (error: any) {
         console.error("AI Error:", error);
@@ -63,8 +71,8 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
     if (isConfirmed) {
         setIsDeleting(order.id);
         try {
-            const batch = writeBatch(db);
-            const logRef = doc(collection(db, 'deleted_orders'));
+            const batch = db.batch();
+            const logRef = db.collection('deleted_orders').doc();
             batch.set(logRef, {
                 originalId: order.id,
                 items: order.items.map(i => ({ name: i.name, quantity: i.quantity })),
@@ -73,7 +81,7 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
                 deletedBy: adminUser.name,
                 deletedByRole: adminUser.role
             });
-            batch.delete(doc(db, 'orders', order.id));
+            batch.delete(db.collection('orders').doc(order.id));
             await batch.commit();
             alert("Đã xóa thành công!");
         } catch (e: any) {
@@ -109,14 +117,23 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
 
   return (
     <div className="p-4 md:p-8 pb-24 animate-in fade-in">
-      <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2 mb-6">
-          <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
-      </h2>
+      <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              <TrendingUp className="text-orange-500" /> Tổng quan chi tiết
+          </h2>
+          {/* Nút Đăng xuất dự phòng cho Admin nếu Mobile bị khuất */}
+          <button 
+            onClick={() => window.location.reload()} 
+            className="md:hidden flex items-center gap-1 text-[10px] font-black text-red-500 uppercase bg-red-50 px-3 py-1.5 rounded-full border border-red-100"
+          >
+              <LogOut size={12} /> Thoát Admin
+          </button>
+      </div>
 
       <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl mb-8 relative overflow-hidden">
         <div className="relative z-10">
             <h3 className="text-lg font-bold flex items-center gap-2 mb-3">
-                <Sparkles className="text-yellow-300" /> Trợ lý AI Báo Cáo
+                <Sparkles className="text-yellow-300" /> Trợ lý AI (Gemini 3 Flash)
             </h3>
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-1 flex items-center border border-white/20">
                 <input 
@@ -124,7 +141,7 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
                     value={aiQuery}
                     onChange={(e) => setAiQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAIAnalyze()}
-                    placeholder="Hỏi AI về doanh thu..."
+                    placeholder="Hỏi AI: 'Hôm nay bán món nào nhất?'"
                     className="flex-1 bg-transparent border-none outline-none text-white placeholder-indigo-300 px-4 py-2"
                 />
                 <button 
@@ -136,7 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({ adminUser, users, orders, shifts 
                 </button>
             </div>
             {aiResponse && (
-                <div className="mt-4 bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-in slide-in-from-top-2 text-sm">
+                <div className="mt-4 bg-black/20 backdrop-blur-sm rounded-2xl p-4 border border-white/10 animate-in slide-in-from-top-2 text-sm max-h-60 overflow-y-auto">
                     {aiResponse}
                 </div>
             )}

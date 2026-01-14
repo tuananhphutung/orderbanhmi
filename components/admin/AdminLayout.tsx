@@ -49,11 +49,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   return (
     <div className="flex h-screen bg-gray-100 relative overflow-hidden flex-col md:flex-row">
       
+      {/* Mobile Top Header - Thêm nút LogOut ở đây */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-orange-200">BM</div>
-              <span className="font-bold text-gray-800 tracking-tight text-sm uppercase">Admin Panel</span>
+              <span className="font-bold text-gray-800 tracking-tight text-sm uppercase">Admin</span>
           </div>
+          <button 
+            onClick={onLogout}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold active:scale-95 transition-all border border-red-100"
+          >
+              <LogOut size={14} />
+              <span>Đăng xuất</span>
+          </button>
       </div>
 
       <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-2xl">

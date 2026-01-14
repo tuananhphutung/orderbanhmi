@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 import { MenuItem } from '../../types';
 import { Plus, Minus, Trash2, Utensils, Save, Image as ImageIcon, Loader2, XCircle, Video, Infinity, FolderPlus, CornerDownRight, Layers } from 'lucide-react';
 import { uploadFileToFirebase, db } from '../../firebase';
-import { addDoc, collection, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 interface InventoryManagerProps {
   menuItems: MenuItem[];
@@ -75,7 +74,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
     }
 
     try {
-        const docRef = await addDoc(collection(db, 'menu_items'), itemData);
+        // Using v8 add syntax
+        await db.collection('menu_items').add(itemData);
         alert(`Thêm ${newItem.isParent ? 'Món Mẹ' : 'Món'} thành công!`);
         setNewItem({ name: '', price: '', stock: '', category: 'food', image: '', isParent: false, parentId: '' });
     } catch (e: any) {
@@ -87,7 +87,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
   const updateStock = async (id: string, newStock: number) => {
     const stock = Math.max(0, newStock);
     try {
-        await updateDoc(doc(db, 'menu_items', id), { stock: stock });
+        // Using v8 update syntax
+        await db.collection('menu_items').doc(id).update({ stock: stock });
     } catch (e) {
         console.error("Error updating stock", e);
     }
@@ -101,16 +102,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ menuItems }) => {
 
       if(confirm(message)) {
           try {
-              const batch = writeBatch(db);
+              // Using v8 batch syntax
+              const batch = db.batch();
               
               // Xóa món hiện tại
-              batch.delete(doc(db, 'menu_items', item.id));
+              batch.delete(db.collection('menu_items').doc(item.id));
 
               // Nếu là Món Mẹ, tìm các con và set parentId = null (thành món lẻ)
               if (isParent) {
                   const children = menuItems.filter(i => i.parentId === item.id);
                   children.forEach(child => {
-                      const childRef = doc(db, 'menu_items', child.id);
+                      const childRef = db.collection('menu_items').doc(child.id);
                       // Dùng update để xóa field parentId (hoặc set null/empty string)
                       batch.update(childRef, { parentId: '' }); 
                   });

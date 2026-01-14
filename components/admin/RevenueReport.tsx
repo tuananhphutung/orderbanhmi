@@ -3,7 +3,6 @@ import React, { useState, useMemo } from 'react';
 import { Order, User } from '../../types';
 import { Calendar, CreditCard, Wallet, TrendingUp, FileText, Trash2, ChevronRight, ArrowRight } from 'lucide-react';
 import { db } from '../../firebase';
-import { doc, deleteDoc, addDoc, collection } from 'firebase/firestore';
 
 interface RevenueReportProps {
   orders: Order[];
@@ -29,14 +28,15 @@ const RevenueReport: React.FC<RevenueReportProps> = ({ orders, adminUser }) => {
   const handleDeleteOrder = async (order: Order) => {
       if (confirm('Xác nhận xóa đơn hàng? Nhật ký xóa sẽ được lưu lại để đối soát tài chính.')) {
           try {
-              await addDoc(collection(db, 'deleted_orders'), {
+              // Using v8 add and delete syntax
+              await db.collection('deleted_orders').add({
                   ...order,
                   deletedAt: Date.now(),
                   deletedBy: adminUser.name,
                   deletedByRole: adminUser.role,
                   originalId: order.id
               });
-              await deleteDoc(doc(db, 'orders', order.id));
+              await db.collection('orders').doc(order.id).delete();
           } catch (e) {
               alert('Lỗi khi xóa đơn hàng');
           }
