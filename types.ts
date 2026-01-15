@@ -7,11 +7,11 @@ export interface LoginFormData {
 export interface User {
   id: string;
   name: string;
-  username: string; // Added username for login
-  password?: string; // Added password
+  username: string;
+  password?: string;
   role: 'admin' | 'staff';
-  status: 'active' | 'pending' | 'locked'; // Added status
-  isOnline?: boolean; // Added online status
+  status: 'active' | 'pending' | 'locked';
+  isOnline?: boolean;
   avatar?: string;
   phone?: string;
 }
@@ -23,15 +23,14 @@ export interface MenuItem {
   category: 'food' | 'topping';
   image?: string;
   stock: number;
-  isParent?: boolean; // True nếu đây là Món Mẹ (Nhóm)
-  parentId?: string; // ID của Món Mẹ nếu đây là món con
+  isParent?: boolean;
+  parentId?: string;
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
 }
 
-// Updated 'be' to 'xanhsm'
 export type OrderSource = 'app' | 'grab' | 'shopee' | 'xanhsm';
 
 export interface Order {
@@ -45,6 +44,7 @@ export interface Order {
   source: OrderSource;
   customerName?: string;
   customerPhone?: string;
+  customDate?: string; // Định dạng YYYY-MM-DD
 }
 
 export interface CheckInRecord {
@@ -54,16 +54,16 @@ export interface CheckInRecord {
   latitude: number;
   longitude: number;
   address?: string;
-  imageUrl?: string; // Evidence photo
-  type: 'in' | 'out'; // Check-in or Check-out
+  imageUrl?: string;
+  type: 'in' | 'out';
 }
 
 export interface Shift {
   id: string;
   staffIds: string[];
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  date: string;
+  startTime: string;
+  endTime: string;
   note?: string;
 }
 
