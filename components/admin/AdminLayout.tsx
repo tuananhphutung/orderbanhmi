@@ -49,19 +49,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   return (
     <div className="flex h-screen bg-gray-100 relative overflow-hidden flex-col md:flex-row">
       
-      {/* Mobile Top Header - Thêm nút LogOut ở đây */}
+      {/* Mobile Top Header (Clean) */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white/80 backdrop-blur-md border-b border-gray-100 z-40 flex items-center justify-between px-4">
           <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-orange-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-orange-200">BM</div>
-              <span className="font-bold text-gray-800 tracking-tight text-sm uppercase">Admin</span>
+              <span className="font-bold text-gray-800 tracking-tight text-sm uppercase">Quản trị viên</span>
           </div>
-          <button 
-            onClick={onLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold active:scale-95 transition-all border border-red-100"
-          >
-              <LogOut size={14} />
-              <span>Đăng xuất</span>
-          </button>
       </div>
 
       <div className="hidden md:flex z-50 w-64 h-full bg-gray-900 text-white flex-col shadow-2xl">
@@ -95,13 +88,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         {activeTab === 'inventory' && <InventoryManager menuItems={menuItems} setMenuItems={setMenuItems} />}
       </div>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 flex justify-between px-0.5 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
-          <NavItem id="dashboard" icon={LayoutDashboard} label="Tổng quan" />
-          <NavItem id="revenue" icon={BarChart2} label="D.Thu" />
-          <NavItem id="deleted" icon={Trash2} label="Xóa" />
-          <NavItem id="inventory" icon={Package} label="Kho" />
-          <NavItem id="staff" icon={Users} label="N.Viên" />
-          <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-100 z-50 flex flex-col pt-1 shadow-[0_-8px_30px_rgb(0,0,0,0.08)]">
+          <div className="flex justify-between px-0.5">
+              <NavItem id="dashboard" icon={LayoutDashboard} label="T.Quan" />
+              <NavItem id="revenue" icon={BarChart2} label="D.Thu" />
+              <NavItem id="deleted" icon={Trash2} label="Xóa" />
+              <NavItem id="inventory" icon={Package} label="Kho" />
+              <NavItem id="staff" icon={Users} label="N.Viên" />
+              <NavItem id="shifts" icon={CalendarClock} label="Ca trực" />
+              {/* Nút đăng xuất tích hợp vào Bottom Nav */}
+              <button onClick={onLogout} className="flex flex-col items-center justify-center w-full py-1.5 text-red-400">
+                  <div className="p-1"><LogOut size={20} /></div>
+                  <span className="text-[8px] font-black mt-0.5 uppercase tracking-tighter">Thoát</span>
+              </button>
+          </div>
+          <div className="h-safe-bottom bg-white"></div>
       </div>
 
     </div>

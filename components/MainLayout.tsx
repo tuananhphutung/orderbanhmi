@@ -41,13 +41,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
 
   const markAsRead = async (notificationId: string) => {
       try {
-          // Using v8 update syntax
           await db.collection('notifications').doc(notificationId).update({ isRead: true });
       } catch (e) {}
   };
 
   const markAllRead = async () => {
-      // Using v8 batch syntax
       const batch = db.batch();
       notifications.filter(n => !n.isRead).forEach(n => {
           const ref = db.collection('notifications').doc(n.id);
@@ -62,12 +60,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <header className="bg-white shadow-sm z-20 px-6 py-3 flex justify-between items-center sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold">
-            BM
-          </div>
+          <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold shadow-md">BM</div>
           <div>
-            <h1 className="font-bold text-gray-800 text-lg leading-tight">Bánh Mì Hội An</h1>
-            <p className="text-xs text-gray-500">POS System</p>
+            <h1 className="font-bold text-gray-800 text-base leading-tight">BM Hội An</h1>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Nhân viên POS</p>
           </div>
         </div>
 
@@ -116,16 +112,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                  </div>
              )}
           </div>
-
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-bold text-gray-800">{user.name}</p>
-            <p className="text-xs text-green-600 font-medium flex items-center justify-end gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online</p>
-          </div>
-          <button onClick={onLogout} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" title="Đăng xuất"><LogOut size={20} /></button>
+          <button onClick={onLogout} className="hidden md:flex p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"><LogOut size={20} /></button>
         </div>
       </header>
       
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex justify-around p-2 pb-safe">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 flex justify-around p-2 pb-safe shadow-[0_-8px_30px_rgb(0,0,0,0.06)]">
          <button onClick={() => setActiveTab('order')} className={`flex flex-col items-center p-2 text-xs font-medium ${activeTab === 'order' ? 'text-orange-500' : 'text-gray-400'}`}>
             <LayoutGrid size={24} className="mb-1" /> Gọi món
           </button>
@@ -134,6 +125,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           </button>
           <button onClick={() => setActiveTab('profile')} className={`flex flex-col items-center p-2 text-xs font-medium ${activeTab === 'profile' ? 'text-orange-500' : 'text-gray-400'}`}>
             <UserCircle size={24} className="mb-1" /> Cá nhân
+          </button>
+          <button onClick={onLogout} className="flex flex-col items-center p-2 text-xs font-medium text-red-400">
+            <LogOut size={24} className="mb-1" /> Thoát
           </button>
       </div>
 
